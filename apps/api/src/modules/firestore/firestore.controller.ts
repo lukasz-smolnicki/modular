@@ -1,14 +1,13 @@
-import { Controller, Get } from "@nestjs/common";
-import { FirebaseService } from "../../database/firebase.service";
+import { Controller, Get, Header } from "@nestjs/common";
+import { FirestoreMsgService } from "./firestore.service";
 
 @Controller("firestore")
 export class FirestoreController {
-  constructor(private readonly fb: FirebaseService) {}
+  constructor(private readonly msgs: FirestoreMsgService) {}
 
   @Get()
+  @Header("Content-Type", "text/plain; charset=utf-8")
   async get(): Promise<string> {
-    const ref = this.fb.db.collection("health").doc("ping");
-    await ref.set({ ok: true, ts: Date.now() }, { merge: true });
-    return "Firestore OK";
+    return this.msgs.getWelcome();
   }
 }
