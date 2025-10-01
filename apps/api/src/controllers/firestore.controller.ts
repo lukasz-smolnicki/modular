@@ -1,10 +1,10 @@
-import { Controller, Get, HttpCode } from '@nestjs/common';
+import { Controller, Get, HttpCode } from "@nestjs/common";
 
-@Controller('firestore')
+@Controller("firestore")
 export class FirestoreController {
   @Get()
   @HttpCode(501)
   notImplemented() {
-    return { error: 'Not implemented yet (Firestore w kolejnym kroku)' };
+    return { error: "Not implemented yet (Firestore w kolejnym kroku)" };
   }
 }

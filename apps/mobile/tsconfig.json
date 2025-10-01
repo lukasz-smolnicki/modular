@@ -6,9 +6,6 @@
     "strict": true,
     "skipLibCheck": true
   },
-  "include": [
-    "main.tsx",
-    "src"
-  ],
+  "include": ["main.tsx", "src"],
   "extends": "expo/tsconfig.base"
 }

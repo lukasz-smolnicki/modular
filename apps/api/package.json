@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "ts-node src/main.ts"
+    "dev": "ts-node main.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.6",
