@@ -10,5 +10,5 @@
     "outDir": "dist",
     "rootDir": "src"
   },
-  "include": ["main.ts", "src"]
+  "include": ["src"]
 }

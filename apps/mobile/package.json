@@ -2,7 +2,7 @@
   "name": "mobile",
   "version": "0.0.0",
   "private": true,
-  "main": "main.tsx",
+  "main": "src/main.tsx",
   "scripts": {
     "dev": "expo start --web"
   },

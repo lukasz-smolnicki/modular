@@ -7,5 +7,5 @@
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["src", "main.tsx"]
+  "include": ["src", "src/main.tsx"]
 }
