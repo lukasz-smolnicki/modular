@@ -1,3 +1,20 @@
-node_modules/
-.expo/
-package-lock.json
+# ── Zależności / locki ─────────────────────────────────
+**/node_modules/
+**/package-lock.json
+
+# ── Expo / RN ──────────────────────────────────────────
+**/.expo/
+**/.expo-shared/
+
+# ── Build / artefakty ──────────────────────────────────
+**/dist/
+**/build/
+
+# ── Firebase Emulator ──────────────────────────────────
+**/firebase-debug.log
+**/firestore-debug.log
+**/.emulator-data/
+
+# ── (opcjonalnie) Env ──────────────────────────────────
+**/.env
+**/.env.*

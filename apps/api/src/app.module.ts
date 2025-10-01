@@ -1,6 +1,9 @@
 import { Module } from "@nestjs/common";
-import { ApiController } from "./controllers/api.controller";
-import { FirestoreController } from "./controllers/firestore.controller";
+import { ApiModule } from "./modules/api/api.module";
+import { FirestoreModule } from "./modules/firestore/firestore.module";
+import { FirebaseModule } from "./database/firebase.module";
 
-@Module({ controllers: [ApiController, FirestoreController] })
+@Module({
+  imports: [FirebaseModule, ApiModule, FirestoreModule],
+})
 export class AppModule {}
