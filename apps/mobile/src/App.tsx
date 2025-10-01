@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Text } from 'react-native';
 
 export default function App() {
     const [apiText, setApiText] = useState('Ładowanie…');
@@ -16,5 +17,5 @@ export default function App() {
             .catch(() => setFirestoreText('Błąd /firestore'));
     }, []);
 
-    return <pre style={{ margin: 0 }}>{apiText + '\n' + firestoreText}</pre>;
+    return <Text>{apiText + '\n' + firestoreText}</Text>;
 }
