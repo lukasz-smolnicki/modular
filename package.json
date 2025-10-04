@@ -11,7 +11,8 @@
         "dev:mobile": "npx dotenv -e .env.local -- npm run --workspace=apps/mobile dev",
         "lint": "eslint apps --fix --max-warnings=0",
         "test:api": "npx firebase emulators:exec --only firestore --project local-project \"npm run --workspace=apps/api test:e2e\"",
-        "test:web": "npx playwright test -c apps/web/playwright.config.ts"
+        "test:web": "npx playwright test -c apps/web/playwright.config.ts",
+        "test:mobile": "npx playwright test -c apps/mobile/playwright.config.ts"
     },
     "devDependencies": {
         "@playwright/test": "^1.55.1",
@@ -32,9 +33,15 @@
         "kill-port": "^2.0.1",
         "npm-run-all": "^4.1.5",
         "prettier": "^3.6.2",
+        "serve": "^14.2.5",
         "typescript": "^5.9.3",
         "typescript-eslint": "^8.45.0",
         "wait-on": "^9.0.1",
         "yaml-eslint-parser": "^1.3.0"
+    },
+    "dependencies": {
+        "@types/react": "~19.1.10",
+        "react": "^19.1.0",
+        "react-dom": "^19.1.0"
     }
 }

@@ -2,12 +2,12 @@ import "dotenv/config";
 import { defineConfig } from "@playwright/test";
 
 const API_PORT = Number(process.env.API_PORT ?? 3000);
-const WEB_PORT = Number(process.env.WEB_PORT ?? 5173);
+const WEB_PORT = Number(process.env.EXPO_WEB_PORT ?? 8081);
 
 export default defineConfig({
   testDir: "./test",
   testMatch: ["**/*.spec.ts"],
-  timeout: 30_000,
+  timeout: 60_000,
   use: { baseURL: `http://localhost:${WEB_PORT}` },
   webServer: [
     {
@@ -22,14 +22,18 @@ export default defineConfig({
       port: API_PORT,
       reuseExistingServer: true,
       cwd: "../../",
-      env: process.env as Record<string, string>,
+      env: {
+        ...process.env,
+        WEB_ORIGIN: `http://localhost:${WEB_PORT}`,
+        EXPO_WEB_ORIGIN: `http://localhost:${WEB_PORT}`,
+      } as Record<string, string>,
     },
     {
-      command: `npm run --workspace=apps/web build && npm run --workspace=apps/web preview -- --port ${WEB_PORT} --strictPort`,
+      command: `npx expo export --platform web && npx serve -s dist -l ${WEB_PORT}`,
       port: WEB_PORT,
       reuseExistingServer: true,
-      cwd: "../../",
-      env: { ...process.env, NODE_ENV: "production" } as Record<string, string>,
+      cwd: "../../apps/mobile",
+      env: process.env as Record<string, string>,
     },
   ],
 });

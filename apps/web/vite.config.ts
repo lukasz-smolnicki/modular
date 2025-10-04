@@ -1,9 +1,9 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
-    plugins: [react()],
-    esbuild: {
-        logOverride: { 'unsupported-directive': 'silent' }
-    }
+  plugins: [react()],
+  esbuild: {
+    logOverride: { "unsupported-directive": "silent" },
+  },
 });
