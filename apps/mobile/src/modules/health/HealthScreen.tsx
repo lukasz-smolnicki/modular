@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, Platform } from "react-native";
 
+type HealthPayload = { message?: string };
+
 const API_BASE =
-  process.env.EXPO_PUBLIC_API_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  process.env.EXPO_PUBLIC_API_BASE_URL ??
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:3000";
 
 export default function HealthScreen() {
@@ -15,16 +17,16 @@ export default function HealthScreen() {
     let on = true;
     (async () => {
       try {
-        const [a, f] = await Promise.all([
+        const [a, f]: [HealthPayload, HealthPayload] = await Promise.all([
           fetch(`${API_BASE}/health/api`).then((r) => r.json()),
           fetch(`${API_BASE}/health/firestore`).then((r) => r.json()),
         ]);
         if (!on) return;
         setApiMsg(String(a?.message ?? ""));
         setFsMsg(String(f?.message ?? ""));
-      } catch (e: any) {
+      } catch {
         if (!on) return;
-        setErr(e?.message ?? "Błąd");
+        setErr("Błąd");
       }
     })();
     return () => {

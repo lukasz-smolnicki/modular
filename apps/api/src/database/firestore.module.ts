@@ -4,9 +4,9 @@ import { runSeed } from "./firestore.seed";
 
 export const FIRESTORE = Symbol("FIRESTORE");
 
-const firestoreProvider: Provider = {
+const firestoreProvider: Provider<Firestore> = {
   provide: FIRESTORE,
-  useFactory: async () => {
+  useFactory: async (): Promise<Firestore> => {
     const projectId =
       process.env.FIREBASE_PROJECT_ID ||
       process.env.GCLOUD_PROJECT ||
@@ -17,12 +17,13 @@ const firestoreProvider: Provider = {
 
     if (emulator) {
       const [host, portStr] = emulator.split(":");
-      db = new Firestore({
+      const settings: ConstructorParameters<typeof Firestore>[0] = {
         projectId,
         host,
         port: Number(portStr),
         ssl: false,
-      } as any);
+      };
+      db = new Firestore(settings);
       if ((process.env.FIRESTORE_SEED_ON_START ?? "true") === "true") {
         await runSeed(db);
       }

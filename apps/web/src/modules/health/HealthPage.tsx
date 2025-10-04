@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 
+type HealthPayload = { message?: string };
+
 const API_BASE =
-  (import.meta as any).env?.VITE_API_BASE_URL ||
-  (import.meta as any).env?.NEXT_PUBLIC_API_BASE_URL ||
+  import.meta.env.VITE_API_BASE_URL ??
+  import.meta.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:3000";
 
 export default function HealthPage() {
@@ -14,16 +16,16 @@ export default function HealthPage() {
     let on = true;
     (async () => {
       try {
-        const [a, f] = await Promise.all([
+        const [a, f]: [HealthPayload, HealthPayload] = await Promise.all([
           fetch(`${API_BASE}/health/api`).then((r) => r.json()),
           fetch(`${API_BASE}/health/firestore`).then((r) => r.json()),
         ]);
         if (!on) return;
         setApiMsg(String(a?.message ?? ""));
         setFsMsg(String(f?.message ?? ""));
-      } catch (e: any) {
+      } catch {
         if (!on) return;
-        setErr(e?.message ?? "Błąd");
+        setErr("Błąd");
       }
     })();
     return () => {
