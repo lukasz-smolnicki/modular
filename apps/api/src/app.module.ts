@@ -1,9 +1,8 @@
-import { Module } from "@nestjs/common";
-import { ApiModule } from "./modules/api/api.module";
-import { FirestoreModule } from "./modules/firestore/firestore.module";
-import { FirebaseModule } from "./database/firebase.module";
+import { Module } from '@nestjs/common';
+import { FirestoreModule } from './database/firestore.module';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
-  imports: [FirebaseModule, ApiModule, FirestoreModule],
+    imports: [FirestoreModule, HealthModule]
 })
 export class AppModule {}

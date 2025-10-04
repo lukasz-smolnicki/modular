@@ -5,17 +5,19 @@
         "apps/*"
     ],
     "scripts": {
-        "dev:api": "npm run --workspace=apps/api dev:nest",
-        "dev:firebase": "npm run --workspace=apps/api dev:fb",
-        "dev:web": "npm run --workspace=apps/web dev",
-        "dev:mobile": "npm run --workspace=apps/mobile dev",
-        "lint": "eslint apps --fix --max-warnings=0"
+        "dev:firestore": "npx dotenv -e .env.local -- npm run --workspace=apps/api firestore",
+        "dev:api": "npx dotenv -e .env.local -- npm run --workspace=apps/api api",
+        "dev:web": "npx dotenv -e .env.local -- npm run --workspace=apps/web dev",
+        "dev:mobile": "npx dotenv -e .env.local -- npm run --workspace=apps/mobile dev",
+        "lint": "eslint apps --fix --max-warnings=0",
+        "test:api": "npx firebase emulators:exec --only firestore --project local-project \"npm run --workspace=apps/api test:e2e\""
     },
     "devDependencies": {
         "@playwright/test": "^1.55.1",
         "@typescript-eslint/eslint-plugin": "^8.45.0",
         "@typescript-eslint/parser": "^8.45.0",
         "concurrently": "^9.2.1",
+        "dotenv-cli": "^10.0.0",
         "eslint": "^9.36.0",
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-jsonc": "^2.20.1",
