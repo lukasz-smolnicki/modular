@@ -3,7 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently -k -s first -n emu,api -c blue,green \"firebase emulators:start\" \"wait-on tcp:127.0.0.1:8080 && cross-env FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 ts-node src/main.ts\""
+    "firebase": "npx -y kill-port 8080 4000 4400 9150 && npx -y firebase emulators:start --only firestore",
+    "api": "wait-on tcp:127.0.0.1:8080 && cross-env FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 ts-node src/main.ts",
+    "dev": "npm-run-all --parallel firebase api"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.6",
