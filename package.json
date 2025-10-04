@@ -10,7 +10,8 @@
         "dev:web": "npx dotenv -e .env.local -- npm run --workspace=apps/web dev",
         "dev:mobile": "npx dotenv -e .env.local -- npm run --workspace=apps/mobile dev",
         "lint": "eslint apps --fix --max-warnings=0",
-        "test:api": "npx firebase emulators:exec --only firestore --project local-project \"npm run --workspace=apps/api test:e2e\""
+        "test:api": "npx firebase emulators:exec --only firestore --project local-project \"npm run --workspace=apps/api test:e2e\"",
+        "test:web": "npx playwright test -c apps/web/playwright.config.ts"
     },
     "devDependencies": {
         "@playwright/test": "^1.55.1",
