@@ -18,3 +18,13 @@
 # ── (opcjonalnie) Env ──────────────────────────────────
 **/.env
 **/.env.*
+
+# ── Playwright / E2E ───────────────────────────────────
+**/playwright-report/
+**/blob-report/
+**/test-results/
+**/.last-run.json
+**/trace.zip
+
+# ── Logi ogólne (opcjonalnie) ──────────────────────────
+*.log
