@@ -21,8 +21,7 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
-                  cache: npm
-            - run: npm ci --no-audit --no-fund
+            - run: npm install --no-audit --no-fund
             - run: npm run lint
 
     build:
@@ -168,8 +167,7 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
-                  cache: npm
-            - run: npm ci --no-audit --no-fund
+            - run: npm install --no-audit --no-fund
             - run: npm run --workspace=apps/api test
 
     test_web:
@@ -180,8 +178,7 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
-                  cache: npm
-            - run: npm ci --no-audit --no-fund
+            - run: npm install --no-audit --no-fund
             - env:
                   WEB_E2E_URL: ${{ vars.WEB_DEV_URL }}
               run: npm run --workspace=apps/web test
@@ -194,8 +191,7 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
-                  cache: npm
-            - run: npm ci --no-audit --no-fund
+            - run: npm install --no-audit --no-fund
             - env:
                   MOBILE_WEB_E2E_URL: ${{ vars.MOBILE_WEB_DEV_URL }}
               run: npm run --workspace=apps/mobile test
