@@ -122,7 +122,7 @@ jobs:
                     --platform managed \
                     --allow-unauthenticated \
                     --port 8080 \
-                    --set-env-vars "^~^JWT_SECRET=${{ vars.JWT_SECRET }}~FIREBASE_PROJECT_ID=${{ vars.FIREBASE_PROJECT_ID }}"
+                    --set-env-vars "^~^JWT_SECRET=${{ vars.JWT_SECRET }}~FIREBASE_PROJECT_ID=${{ vars.FIREBASE_PROJECT_ID }}~WEB_ORIGIN=${{ vars.WEB_DEV_URL }}~EXPO_WEB_ORIGIN=${{ vars.MOBILE_WEB_DEV_URL }}"
 
             - name: Deploy Web
               if: matrix.app == 'web'
@@ -168,7 +168,7 @@ jobs:
               with:
                   node-version: 20
             - run: npm install --no-audit --no-fund
-            - run: npm run --workspace=apps/api test
+            - run: npm run --workspace=apps/api test:e2e
 
     test_web:
         needs: [deploy, warmup]
