@@ -2,7 +2,7 @@ FROM node:20-alpine AS deps
 WORKDIR /repo
 COPY package*.json ./
 COPY apps/web/package.json apps/web/package.json
-RUN npm ci --no-audit --no-fund
+RUN npm install --no-audit --no-fund
 
 FROM node:20-alpine AS build
 WORKDIR /repo
@@ -16,7 +16,6 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-ENV HOST=0.0.0.0
 ENV PORT=8080
 COPY --from=build /repo/apps/web/dist ./dist
 EXPOSE 8080
