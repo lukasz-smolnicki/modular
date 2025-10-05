@@ -6,7 +6,7 @@ on:
 
 jobs:
     lint:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-22.04
         steps:
             - uses: actions/checkout@v4
             - name: Load .env.local
@@ -17,11 +17,12 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
+                  cache: npm
             - run: npm install --no-audit --no-fund
             - run: npm run lint
 
     api-e2e:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-22.04
         needs: [lint]
         steps:
             - uses: actions/checkout@v4
@@ -33,13 +34,14 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
+                  cache: npm
             - run: npm install --no-audit --no-fund
-            - name: API e2e
-              run: npm run test:api
+            - run: npm run test:api
 
     web-e2e:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-22.04
         needs: [lint]
+        container: mcr.microsoft.com/playwright:v1.55.1-jammy
         steps:
             - uses: actions/checkout@v4
             - name: Load .env.local
@@ -50,10 +52,9 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
+                  cache: npm
             - run: npm install --no-audit --no-fund
-            - uses: microsoft/playwright-github-action@v1
-            - name: Web e2e
-              run: npm run test:web
+            - run: npm run test:web
             - name: Upload Playwright report (web)
               if: always()
               uses: actions/upload-artifact@v4
@@ -64,8 +65,9 @@ jobs:
                   retention-days: 7
 
     mobile-e2e:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-22.04
         needs: [lint]
+        container: mcr.microsoft.com/playwright:v1.55.1-jammy
         steps:
             - uses: actions/checkout@v4
             - name: Load .env.local
@@ -76,11 +78,10 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
+                  cache: npm
             - run: npm install --no-audit --no-fund
             - run: npm i -D -W serve
-            - uses: microsoft/playwright-github-action@v1
-            - name: Mobile (Expo Web) e2e
-              run: npm run test:mobile
+            - run: npm run test:mobile
             - name: Upload Playwright report (mobile)
               if: always()
               uses: actions/upload-artifact@v4
