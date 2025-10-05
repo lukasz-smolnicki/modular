@@ -17,7 +17,6 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
-                  cache: npm
             - run: npm install --no-audit --no-fund
             - run: npm run lint
 
@@ -34,7 +33,6 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
-                  cache: npm
             - run: npm install --no-audit --no-fund
             - run: npm run test:api
 
@@ -52,7 +50,6 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
-                  cache: npm
             - run: npm install --no-audit --no-fund
             - run: npm run test:web
             - name: Upload Playwright report (web)
@@ -78,7 +75,6 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
-                  cache: npm
             - run: npm install --no-audit --no-fund
             - run: npm i -D -W serve
             - run: npm run test:mobile
