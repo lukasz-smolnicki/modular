@@ -47,6 +47,10 @@ jobs:
                   if [ -f .env.local ]; then
                     grep -v '^\s*#' .env.local | grep -v '^\s*$' >> "$GITHUB_ENV"
                   fi
+            - name: Install JRE for Firebase emulators
+              run: |
+                  apt-get update
+                  apt-get install -y --no-install-recommends openjdk-17-jre-headless
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
@@ -72,6 +76,10 @@ jobs:
                   if [ -f .env.local ]; then
                     grep -v '^\s*#' .env.local | grep -v '^\s*$' >> "$GITHUB_ENV"
                   fi
+            - name: Install JRE for Firebase emulators
+              run: |
+                  apt-get update
+                  apt-get install -y --no-install-recommends openjdk-17-jre-headless
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
