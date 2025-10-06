@@ -6,14 +6,9 @@ on:
 
 jobs:
     lint:
-        runs-on: ubuntu-22.04
+        runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
-            - name: Load .env.local
-              run: |
-                  if [ -f .env.local ]; then
-                    grep -v '^\s*#' .env.local | grep -v '^\s*$' >> "$GITHUB_ENV"
-                  fi
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
@@ -21,41 +16,41 @@ jobs:
             - run: npm run lint
 
     api-e2e:
-        runs-on: ubuntu-22.04
+        runs-on: ubuntu-latest
         needs: [lint]
+        env:
+            FIREBASE_PROJECT_ID: local-project
+            FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
+            FIRESTORE_SEED_ON_START: 'true'
+            API_PORT: 3000
+            WEB_ORIGIN: http://localhost:5173
+            EXPO_WEB_ORIGIN: http://localhost:8081
+            NEXT_PUBLIC_API_BASE_URL: http://localhost:3000
+            VITE_API_BASE_URL: http://localhost:3000
+            EXPO_PUBLIC_API_BASE_URL: http://localhost:3000
+            JWT_SECRET: dev-secret
         steps:
             - uses: actions/checkout@v4
-            - name: Load .env.local
-              run: |
-                  if [ -f .env.local ]; then
-                    grep -v '^\s*#' .env.local | grep -v '^\s*$' >> "$GITHUB_ENV"
-                  fi
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
             - run: npm install --no-audit --no-fund
-            - run: npm run test:api
+            - name: API e2e
+              run: npm run test:api
 
     web-e2e:
-        runs-on: ubuntu-22.04
+        runs-on: ubuntu-latest
         needs: [lint]
-        container: mcr.microsoft.com/playwright:v1.55.1-jammy
         steps:
             - uses: actions/checkout@v4
-            - name: Load .env.local
-              run: |
-                  if [ -f .env.local ]; then
-                    grep -v '^\s*#' .env.local | grep -v '^\s*$' >> "$GITHUB_ENV"
-                  fi
-            - name: Install JRE for Firebase emulators
-              run: |
-                  apt-get update
-                  apt-get install -y --no-install-recommends openjdk-17-jre-headless
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
             - run: npm install --no-audit --no-fund
-            - run: npm run test:web
+            - name: Install Playwright (browsers + deps)
+              run: npx playwright install --with-deps
+            - name: Web e2e
+              run: npm run test:web
             - name: Upload Playwright report (web)
               if: always()
               uses: actions/upload-artifact@v4
@@ -66,26 +61,19 @@ jobs:
                   retention-days: 7
 
     mobile-e2e:
-        runs-on: ubuntu-22.04
+        runs-on: ubuntu-latest
         needs: [lint]
-        container: mcr.microsoft.com/playwright:v1.55.1-jammy
         steps:
             - uses: actions/checkout@v4
-            - name: Load .env.local
-              run: |
-                  if [ -f .env.local ]; then
-                    grep -v '^\s*#' .env.local | grep -v '^\s*$' >> "$GITHUB_ENV"
-                  fi
-            - name: Install JRE for Firebase emulators
-              run: |
-                  apt-get update
-                  apt-get install -y --no-install-recommends openjdk-17-jre-headless
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
             - run: npm install --no-audit --no-fund
             - run: npm i -D -W serve
-            - run: npm run test:mobile
+            - name: Install Playwright (browsers + deps)
+              run: npx playwright install --with-deps
+            - name: Mobile (Expo Web) e2e
+              run: npm run test:mobile
             - name: Upload Playwright report (mobile)
               if: always()
               uses: actions/upload-artifact@v4
