@@ -1,6 +1,6 @@
-describe("Remote Health (Cloud Run)", () => {
-  const base = process.env.API_DEV_URL as string;
+const base = process.env.API_REMOTE_BASE as string;
 
+describe("Remote Health (Cloud Run)", () => {
   it("GET /health/api -> Witamy z API", async () => {
     const r = await fetch(`${base}/health/api`);
     expect(r.status).toBe(200);

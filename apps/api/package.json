@@ -6,8 +6,8 @@
     "firestore": "npx -y kill-port 8080 4000 4400 9150 && npx -y firebase emulators:start --only firestore",
     "api": "wait-on tcp:127.0.0.1:8080 && cross-env FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 ts-node src/main.ts",
     "dev": "npm-run-all --parallel firestore api",
-    "test:e2e": "jest -c test/jest-e2e.json",
-    "test:remote": "jest -c test/jest-remote.json"
+    "test:e2e:local": "jest -c test/jest-e2e.local.json",
+    "test:e2e:remote": "jest -c test/jest-e2e.remote.json"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.6",

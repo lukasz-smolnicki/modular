@@ -157,7 +157,7 @@ jobs:
                   node-version: 20
             - run: npm install --no-audit --no-fund
             - env:
-                  API_DEV_URL: ${{ vars.API_DEV_URL }}
+                  API_REMOTE_BASE: ${{ vars.API_DEV_URL }}
               run: npm run test:api:remote
 
     test_web:
@@ -186,4 +186,5 @@ jobs:
             - run: npm install --no-audit --no-fund
             - env:
                   MOBILE_WEB_E2E_URL: ${{ vars.MOBILE_WEB_DEV_URL }}
+                  EXPO_PUBLIC_API_BASE_URL: ${{ vars.API_DEV_URL }}
               run: npm run test:mobile

@@ -1,7 +1,7 @@
 {
   "moduleFileExtensions": ["js", "json", "ts"],
   "rootDir": "..",
-  "testMatch": ["<rootDir>/test/health/remote.e2e-spec.ts"],
+  "testRegex": "test/remote/.+\\.remote\\.e2e-spec\\.ts$",
   "transform": {
     "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": "tsconfig.spec.json" }]
   },
