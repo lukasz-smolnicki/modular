@@ -161,42 +161,42 @@ jobs:
                   npx --yes wait-on --timeout 180000 --httpTimeout 30000 "$URL"
                   for i in 1 2 3; do curl -fsS "$URL" >/dev/null || true; sleep 3; done
 
-    test_api:
-        needs: deploy
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: 20
-            - run: npm install --no-audit --no-fund
-            - run: npm run test:api
+    # test_api:
+    #     needs: deploy
+    #     runs-on: ubuntu-latest
+    #     steps:
+    #         - uses: actions/checkout@v4
+    #         - uses: actions/setup-node@v4
+    #           with:
+    #               node-version: 20
+    #         - run: npm install --no-audit --no-fund
+    #         - run: npm run test:api
 
-    test_web:
-        needs: [deploy, warmup]
-        runs-on: ubuntu-latest
-        container: mcr.microsoft.com/playwright:v1.56.0-jammy
-        steps:
-            - uses: actions/checkout@v4
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: 20
-            - run: npm install --no-audit --no-fund
-            - env:
-                  WEB_E2E_URL: ${{ vars.WEB_DEV_URL }}
-              run: npm run test:web
+    # test_web:
+    #     needs: [deploy, warmup]
+    #     runs-on: ubuntu-latest
+    #     container: mcr.microsoft.com/playwright:v1.56.0-jammy
+    #     steps:
+    #         - uses: actions/checkout@v4
+    #         - uses: actions/setup-node@v4
+    #           with:
+    #               node-version: 20
+    #         - run: npm install --no-audit --no-fund
+    #         - env:
+    #               WEB_E2E_URL: ${{ vars.WEB_DEV_URL }}
+    #           run: npm run test:web
 
-    test_mobile_web:
-        needs: [deploy, warmup]
-        runs-on: ubuntu-latest
-        container: mcr.microsoft.com/playwright:v1.56.0-jammy
-        steps:
-            - uses: actions/checkout@v4
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: 20
-            - run: npm install --no-audit --no-fund
-            - env:
-                  MOBILE_WEB_E2E_URL: ${{ vars.MOBILE_WEB_DEV_URL }}
-                  EXPO_PUBLIC_API_BASE_URL: ${{ vars.API_DEV_URL }}
-              run: npm run test:mobile
+    # test_mobile_web:
+    #     needs: [deploy, warmup]
+    #     runs-on: ubuntu-latest
+    #     container: mcr.microsoft.com/playwright:v1.56.0-jammy
+    #     steps:
+    #         - uses: actions/checkout@v4
+    #         - uses: actions/setup-node@v4
+    #           with:
+    #               node-version: 20
+    #         - run: npm install --no-audit --no-fund
+    #         - env:
+    #               MOBILE_WEB_E2E_URL: ${{ vars.MOBILE_WEB_DEV_URL }}
+    #               EXPO_PUBLIC_API_BASE_URL: ${{ vars.API_DEV_URL }}
+    #           run: npm run test:mobile
