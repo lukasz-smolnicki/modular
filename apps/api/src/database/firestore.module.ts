@@ -1,43 +1,47 @@
-import { Module, Provider } from '@nestjs/common';
-import { Firestore } from '@google-cloud/firestore';
-import { runSeed } from './firestore.seed';
+import { Module, Provider } from "@nestjs/common";
+import { Firestore } from "@google-cloud/firestore";
+import { runSeed } from "./firestore.seed";
 
-export const FIRESTORE = Symbol('FIRESTORE');
+export const FIRESTORE = Symbol("FIRESTORE");
 
 const firestoreProvider: Provider<Firestore> = {
-    provide: FIRESTORE,
-    useFactory: async (): Promise<Firestore> => {
-        const emulator = process.env.FIRESTORE_EMULATOR_HOST;
+  provide: FIRESTORE,
+  useFactory: async (): Promise<Firestore> => {
+    const emulator = process.env.FIRESTORE_EMULATOR_HOST;
+    const databaseId =
+      process.env.FIRESTORE_DATABASE_ID ||
+      process.env.GCLOUD_FIRESTORE_DATABASE_ID ||
+      "(default)";
 
-        if (emulator) {
-            const [host, portStr] = emulator.split(':');
-            const projectId =
-                process.env.FIREBASE_PROJECT_ID ||
-                process.env.GOOGLE_CLOUD_PROJECT ||
-                process.env.GCLOUD_PROJECT ||
-                'local-project';
+    if (emulator) {
+      const [host, portStr] = emulator.split(":");
+      const projectId =
+        process.env.FIREBASE_PROJECT_ID ||
+        process.env.GOOGLE_CLOUD_PROJECT ||
+        process.env.GCLOUD_PROJECT ||
+        "local-project";
 
-            const db = new Firestore({
-                projectId,
-                host,
-                port: Number(portStr),
-                ssl: false
-            });
+      const db = new Firestore({
+        projectId,
+        databaseId,
+        host,
+        port: Number(portStr),
+        ssl: false,
+      });
 
-            if ((process.env.FIRESTORE_SEED_ON_START ?? 'true') === 'true') {
-                await runSeed(db);
-            }
-
-            return db;
-        }
-
-        const db = new Firestore();
-        return db;
+      if ((process.env.FIRESTORE_SEED_ON_START ?? "true") === "true") {
+        await runSeed(db);
+      }
+      return db;
     }
+
+    const db = new Firestore({ databaseId });
+    return db;
+  },
 };
 
 @Module({
-    providers: [firestoreProvider],
-    exports: [firestoreProvider]
+  providers: [firestoreProvider],
+  exports: [firestoreProvider],
 })
 export class FirestoreModule {}
