@@ -1,16 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { Firestore } from "@google-cloud/firestore";
+import { Inject, Injectable } from '@nestjs/common';
+import { Firestore } from '@google-cloud/firestore';
+import { FIRESTORE } from './firestore.module';
 
 @Injectable()
 export class FirestoreService {
-  private db = new Firestore();
-
-  async getHealthMessage(): Promise<string> {
-    const snap = await this.db.doc("health/firestore").get();
-    if (!snap.exists)
-      throw new NotFoundException("Brak dokumentu health/firestore");
-    const data = snap.data() as { message?: string } | undefined;
-    if (!data?.message) throw new NotFoundException('Brak pola "message"');
-    return data.message;
-  }
+    constructor(@Inject(FIRESTORE) private readonly db: Firestore) {}
 }
