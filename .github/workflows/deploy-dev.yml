@@ -179,7 +179,8 @@ jobs:
               with:
                   node-version: 20
             - run: npm install --no-audit --no-fund
-            - uses: microsoft/playwright-github-action@v1
+            - name: Install Playwright (browsers + deps)
+              run: npx playwright install --with-deps
             - env:
                   WEB_E2E_URL: ${{ vars.WEB_DEV_URL }}
               run: npm run test:web
@@ -193,7 +194,8 @@ jobs:
               with:
                   node-version: 20
             - run: npm install --no-audit --no-fund
-            - uses: microsoft/playwright-github-action@v1
+            - name: Install Playwright (browsers + deps)
+              run: npx playwright install --with-deps
             - env:
                   MOBILE_WEB_E2E_URL: ${{ vars.MOBILE_WEB_DEV_URL }}
                   EXPO_PUBLIC_API_BASE_URL: ${{ vars.API_DEV_URL }}
