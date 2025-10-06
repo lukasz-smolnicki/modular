@@ -11,6 +11,7 @@
         "dev:mobile": "npx dotenv -e .env.local -- npm run --workspace=apps/mobile dev",
         "lint": "eslint apps --fix --max-warnings=0",
         "test:api": "npx firebase emulators:exec --only firestore --project local-project \"npm run --workspace=apps/api test:e2e\"",
+        "test:api:remote": "npm run --workspace=apps/api test:remote",
         "test:web": "npx playwright test -c apps/web/playwright.config.ts",
         "test:mobile": "npx playwright test -c apps/mobile/playwright.config.ts"
     },

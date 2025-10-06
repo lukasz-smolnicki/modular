@@ -33,17 +33,13 @@ jobs:
                 app: [api, web, mobile-web]
         steps:
             - uses: actions/checkout@v4
-
             - uses: google-github-actions/auth@v2
               with:
                   credentials_json: ${{ secrets.GCP_SA_KEY_JSON }}
-
             - uses: google-github-actions/setup-gcloud@v2
               with:
                   project_id: ${{ vars.GCP_PROJECT }}
-
             - run: gcloud auth configure-docker "${{ vars.AR_HOST }}" --quiet
-
             - name: Compute image tags
               id: img
               shell: bash
@@ -57,11 +53,9 @@ jobs:
                   LATEST="${AR_HOST}/${GCP_PROJECT}/${AR_REPO}/${{ matrix.app }}:dev-latest"
                   echo "image=$IMAGE"  >> "$GITHUB_OUTPUT"
                   echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
-
             - name: Build API
               if: matrix.app == 'api'
               run: docker build -t "${{ steps.img.outputs.image }}" -f apps/api/Dockerfile .
-
             - name: Build Web
               if: matrix.app == 'web'
               run: |
@@ -69,7 +63,6 @@ jobs:
                     --build-arg VITE_API_BASE_URL="${{ vars.API_DEV_URL }}" \
                     -t "${{ steps.img.outputs.image }}" \
                     -f apps/web/Dockerfile .
-
             - name: Build Mobile Web
               if: matrix.app == 'mobile-web'
               run: |
@@ -77,7 +70,6 @@ jobs:
                     --build-arg EXPO_PUBLIC_API_BASE_URL="${{ vars.API_DEV_URL }}" \
                     -t "${{ steps.img.outputs.image }}" \
                     -f apps/mobile/Dockerfile .
-
             - name: Push image
               run: |
                   docker push "${{ steps.img.outputs.image }}"
@@ -93,15 +85,12 @@ jobs:
                 app: [api, web, mobile-web]
         steps:
             - uses: actions/checkout@v4
-
             - uses: google-github-actions/auth@v2
               with:
                   credentials_json: ${{ secrets.GCP_SA_KEY_JSON }}
-
             - uses: google-github-actions/setup-gcloud@v2
               with:
                   project_id: ${{ vars.GCP_PROJECT }}
-
             - name: Compute image tag
               id: img
               shell: bash
@@ -112,7 +101,6 @@ jobs:
                   GCP_PROJECT="${{ vars.GCP_PROJECT }}"
                   SHORT_SHA="${GITHUB_SHA::7}"
                   echo "image=${AR_HOST}/${GCP_PROJECT}/${AR_REPO}/${{ matrix.app }}:dev-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
-
             - name: Deploy API
               if: matrix.app == 'api'
               run: |
@@ -123,7 +111,6 @@ jobs:
                     --allow-unauthenticated \
                     --port 8080 \
                     --set-env-vars "^~^JWT_SECRET=${{ vars.JWT_SECRET }}~FIREBASE_PROJECT_ID=${{ vars.FIREBASE_PROJECT_ID }}~WEB_ORIGIN=${{ vars.WEB_DEV_URL }}~EXPO_WEB_ORIGIN=${{ vars.MOBILE_WEB_DEV_URL }}~FIRESTORE_DATABASE_ID=${{ vars.FIRESTORE_DATABASE_ID }}"
-
             - name: Deploy Web
               if: matrix.app == 'web'
               run: |
@@ -134,7 +121,6 @@ jobs:
                     --allow-unauthenticated \
                     --port 8080 \
                     --set-env-vars "VITE_API_BASE_URL=${{ vars.API_DEV_URL }}"
-
             - name: Deploy Mobile Web
               if: matrix.app == 'mobile-web'
               run: |
@@ -161,42 +147,43 @@ jobs:
                   npx --yes wait-on --timeout 180000 --httpTimeout 30000 "$URL"
                   for i in 1 2 3; do curl -fsS "$URL" >/dev/null || true; sleep 3; done
 
-    # test_api:
-    #     needs: deploy
-    #     runs-on: ubuntu-latest
-    #     steps:
-    #         - uses: actions/checkout@v4
-    #         - uses: actions/setup-node@v4
-    #           with:
-    #               node-version: 20
-    #         - run: npm install --no-audit --no-fund
-    #         - run: npm run test:api
+    test_api:
+        needs: deploy
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+            - run: npm install --no-audit --no-fund
+            - env:
+                  API_DEV_URL: ${{ vars.API_DEV_URL }}
+              run: npm run test:api:remote
 
-    # test_web:
-    #     needs: [deploy, warmup]
-    #     runs-on: ubuntu-latest
-    #     container: mcr.microsoft.com/playwright:v1.56.0-jammy
-    #     steps:
-    #         - uses: actions/checkout@v4
-    #         - uses: actions/setup-node@v4
-    #           with:
-    #               node-version: 20
-    #         - run: npm install --no-audit --no-fund
-    #         - env:
-    #               WEB_E2E_URL: ${{ vars.WEB_DEV_URL }}
-    #           run: npm run test:web
+    test_web:
+        needs: [deploy, warmup]
+        runs-on: ubuntu-latest
+        container: mcr.microsoft.com/playwright:v1.56.0-jammy
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+            - run: npm install --no-audit --no-fund
+            - env:
+                  WEB_E2E_URL: ${{ vars.WEB_DEV_URL }}
+              run: npm run test:web
 
-    # test_mobile_web:
-    #     needs: [deploy, warmup]
-    #     runs-on: ubuntu-latest
-    #     container: mcr.microsoft.com/playwright:v1.56.0-jammy
-    #     steps:
-    #         - uses: actions/checkout@v4
-    #         - uses: actions/setup-node@v4
-    #           with:
-    #               node-version: 20
-    #         - run: npm install --no-audit --no-fund
-    #         - env:
-    #               MOBILE_WEB_E2E_URL: ${{ vars.MOBILE_WEB_DEV_URL }}
-    #               EXPO_PUBLIC_API_BASE_URL: ${{ vars.API_DEV_URL }}
-    #           run: npm run test:mobile
+    test_mobile_web:
+        needs: [deploy, warmup]
+        runs-on: ubuntu-latest
+        container: mcr.microsoft.com/playwright:v1.56.0-jammy
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+            - run: npm install --no-audit --no-fund
+            - env:
+                  MOBILE_WEB_E2E_URL: ${{ vars.MOBILE_WEB_DEV_URL }}
+              run: npm run test:mobile
