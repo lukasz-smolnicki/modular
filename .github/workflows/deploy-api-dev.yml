@@ -17,8 +17,6 @@ env:
     SERVICE_NAME: api-dev
     IMAGE_NAME: api
     IMAGE_TAG: ${{ github.sha }}
-    DOCKERFILE: apps/api/Dockerfile
-    BUILD_CONTEXT: apps/api
 
 jobs:
     deploy:
@@ -29,23 +27,25 @@ jobs:
         steps:
             - uses: actions/checkout@v4
 
-            - uses: google-github-actions/setup-gcloud@v2
-              with:
-                  project_id: ${{ env.GCP_PROJECT }}
-
             - name: Auth with service account key
               uses: google-github-actions/auth@v2
               with:
                   credentials_json: ${{ secrets.GCP_SA_KEY_JSON }}
 
+            - name: Setup gcloud
+              uses: google-github-actions/setup-gcloud@v2
+              with:
+                  project_id: ${{ env.GCP_PROJECT }}
+
             - name: Configure docker auth for Artifact Registry
               run: gcloud auth configure-docker ${{ env.AR_HOST }} --quiet
 
             - name: Build image
+              working-directory: apps/api
               run: |
                   IMAGE_URI=${{ env.AR_HOST }}/${{ env.GCP_PROJECT }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
                   echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-                  docker build -f ${{ env.DOCKERFILE }} -t "$IMAGE_URI" ${{ env.BUILD_CONTEXT }}
+                  docker build -t "$IMAGE_URI" .
 
             - name: Push image
               run: docker push "$IMAGE_URI"
