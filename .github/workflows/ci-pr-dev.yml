@@ -4,6 +4,9 @@ on:
     pull_request:
         branches: [dev]
 
+env:
+    PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.56.0-jammy
+
 jobs:
     pr-lint:
         name: PR • Lint
@@ -42,7 +45,7 @@ jobs:
         name: PR • Web e2e
         runs-on: ubuntu-22.04
         needs: [pr-lint]
-        container: mcr.microsoft.com/playwright:v1.55.1-jammy
+        container: ${{ env.PLAYWRIGHT_IMAGE }}
         steps:
             - uses: actions/checkout@v4
             - name: Load .env.local
@@ -72,7 +75,7 @@ jobs:
         name: PR • Mobile e2e (Expo Web)
         runs-on: ubuntu-22.04
         needs: [pr-lint]
-        container: mcr.microsoft.com/playwright:v1.55.1-jammy
+        container: ${{ env.PLAYWRIGHT_IMAGE }}
         steps:
             - uses: actions/checkout@v4
             - name: Load .env.local
