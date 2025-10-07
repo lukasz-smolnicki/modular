@@ -12,7 +12,9 @@ const firestoreProvider: Provider<Firestore> = {
       process.env.GCLOUD_PROJECT ||
       "local-project";
 
+    const databaseId = process.env.FIRESTORE_DATABASE_ID || "(default)";
     const emulator = process.env.FIRESTORE_EMULATOR_HOST;
+
     let db: Firestore;
 
     if (emulator) {
@@ -22,13 +24,14 @@ const firestoreProvider: Provider<Firestore> = {
         host,
         port: Number(portStr),
         ssl: false,
+        databaseId,
       };
       db = new Firestore(settings);
       if ((process.env.FIRESTORE_SEED_ON_START ?? "true") === "true") {
         await runSeed(db);
       }
     } else {
-      db = new Firestore({ projectId });
+      db = new Firestore({ projectId, databaseId });
     }
     return db;
   },
