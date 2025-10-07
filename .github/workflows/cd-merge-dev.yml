@@ -1,4 +1,4 @@
-name: CD • Merge → dev
+name: CD • Dev Deploy
 run-name: 'CD • dev • ${{ github.ref_name }} • ${{ github.event.head_commit.message }}'
 
 on:
@@ -10,41 +10,35 @@ permissions:
     id-token: write
 
 concurrency:
-    group: cd-merge-dev
+    group: cd-dev
     cancel-in-progress: true
+
+environment:
+    name: dev
 
 jobs:
     deploy-api:
         name: Deploy api-dev
         runs-on: ubuntu-22.04
-        environment:
-            name: dev
         env:
             REGION: ${{ vars.GCP_REGION }}
             PROJECT_ID: ${{ vars.GCP_PROJECT }}
             IMAGE_PATH: ${{ vars.AR_HOST }}/${{ vars.GCP_PROJECT }}/${{ vars.AR_REPO }}/api
             IMAGE_TAG: ${{ github.sha }}
             ENV_COMMON: NODE_ENV=production,JWT_SECRET=${{ vars.JWT_SECRET }},FIREBASE_PROJECT_ID=${{ vars.FIREBASE_PROJECT_ID }},FIRESTORE_DATABASE_ID=${{ vars.FIRESTORE_DATABASE_ID }},WEB_ORIGIN=${{ vars.WEB_DEV_URL }},EXPO_WEB_ORIGIN=${{ vars.MOBILE_WEB_DEV_URL }}
-
         steps:
             - uses: actions/checkout@v4
-
             - uses: google-github-actions/auth@v2
               with:
                   credentials_json: ${{ secrets.GCP_SA_KEY_JSON }}
-
             - uses: google-github-actions/setup-gcloud@v2
-
             - name: Docker login to Artifact Registry
               run: gcloud auth configure-docker ${{ vars.AR_HOST }} -q
-
             - name: Build image
               working-directory: apps/api
               run: docker build -t $IMAGE_PATH:$IMAGE_TAG .
-
             - name: Push image
               run: docker push $IMAGE_PATH:$IMAGE_TAG
-
             - name: Deploy to Cloud Run
               run: |
                   gcloud run deploy api-dev \
