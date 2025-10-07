@@ -113,7 +113,9 @@ jobs:
               working-directory: apps/api
               env:
                   API_BASE_URL: ${{ steps.url.outputs.url }}
-              run: npx jest -c test/jest-e2e.json --runInBand --testPathPattern="test/health/.*\\.e2e-spec\\.ts"
+              run: |
+                  npx jest -c test/jest-e2e.json --runInBand \
+                    --testPathPatterns "test/health/.*\\.e2e-spec\\.ts"
 
     deploy-mobile:
         needs: [changes]
