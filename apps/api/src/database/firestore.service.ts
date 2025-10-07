@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Firestore } from "@google-cloud/firestore";
+import { FIRESTORE } from "./firestore.module";
 
 @Injectable()
 export class FirestoreService {
-  private db = new Firestore();
+  constructor(@Inject(FIRESTORE) private readonly db: Firestore) {}
 
   async getHealthMessage(): Promise<string> {
     const snap = await this.db.doc("health/firestore").get();
