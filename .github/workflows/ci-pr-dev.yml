@@ -1,11 +1,12 @@
-name: PR → dev (lint + e2e)
+name: CI PR → dev (lint + e2e)
 
 on:
     pull_request:
         branches: [dev]
 
 jobs:
-    lint:
+    pr-lint:
+        name: PR • Lint
         runs-on: ubuntu-22.04
         steps:
             - uses: actions/checkout@v4
@@ -20,9 +21,10 @@ jobs:
             - run: npm install --no-audit --no-fund
             - run: npm run lint
 
-    api-e2e:
+    pr-api-e2e:
+        name: PR • API e2e
         runs-on: ubuntu-22.04
-        needs: [lint]
+        needs: [pr-lint]
         steps:
             - uses: actions/checkout@v4
             - name: Load .env.local
@@ -36,10 +38,11 @@ jobs:
             - run: npm install --no-audit --no-fund
             - run: npm run test:api
 
-    web-e2e:
+    pr-web-e2e:
+        name: PR • Web e2e
         runs-on: ubuntu-22.04
-        needs: [lint]
-        container: mcr.microsoft.com/playwright:v1.55.1-jammy
+        needs: [pr-lint]
+        container: mcr.microsoft.com/playwright:v1.56.0-jammy
         steps:
             - uses: actions/checkout@v4
             - name: Load .env.local
@@ -65,10 +68,11 @@ jobs:
                   if-no-files-found: ignore
                   retention-days: 7
 
-    mobile-e2e:
+    pr-mobile-e2e:
+        name: PR • Mobile e2e (Expo Web)
         runs-on: ubuntu-22.04
-        needs: [lint]
-        container: mcr.microsoft.com/playwright:v1.55.1-jammy
+        needs: [pr-lint]
+        container: mcr.microsoft.com/playwright:v1.56.0-jammy
         steps:
             - uses: actions/checkout@v4
             - name: Load .env.local
