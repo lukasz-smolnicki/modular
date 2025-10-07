@@ -102,10 +102,11 @@ jobs:
             - name: Docker auth
               run: gcloud auth configure-docker ${{ env.AR_HOST }} --quiet
             - name: Build image
+              working-directory: apps/mobile
               run: |
                   IMAGE_URI=${{ env.AR_HOST }}/${{ env.GCP_PROJECT }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
                   echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-                  docker build -f apps/mobile/Dockerfile --build-arg API_URL=${{ vars.API_DEV_URL }} -t "$IMAGE_URI" .
+                  docker build --build-arg API_URL=${{ vars.API_DEV_URL }} -t "$IMAGE_URI" .
             - name: Push image
               run: docker push "$IMAGE_URI"
             - name: Deploy to Cloud Run
