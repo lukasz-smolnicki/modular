@@ -1,0 +1,87 @@
+name: CD • Deploy Dev
+on:
+    push:
+        branches: ['dev']
+        paths:
+            - 'api/**'
+            - '.github/workflows/cd-deploy-dev.yml'
+    pull_request:
+        types: [closed]
+        branches: ['dev']
+        paths:
+            - 'api/**'
+            - '.github/workflows/cd-deploy-dev.yml'
+concurrency:
+    group: cd-dev
+    cancel-in-progress: true
+jobs:
+    cd-api-dev-build-image:
+        name: cd:api-dev:build-image
+        if: github.event_name != 'pull_request' || (github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'dev')
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write
+        env:
+            GCP_PROJECT: ${{ vars.GCP_PROJECT }}
+            GCP_REGION: ${{ vars.GCP_REGION }}
+            AR_HOST: ${{ vars.AR_HOST }}
+            AR_REPO: ${{ vars.AR_REPO }}
+            IMAGE_NAME: api
+        steps:
+            - uses: actions/checkout@v4
+            - uses: google-github-actions/auth@v2
+              with:
+                  credentials_json: ${{ secrets.GCP_SA_KEY_JSON }}
+            - uses: google-github-actions/setup-gcloud@v2
+              with:
+                  project_id: ${{ env.GCP_PROJECT }}
+            - run: gcloud auth configure-docker ${{ env.AR_HOST }} --quiet
+            - id: img
+              run: echo "uri=${{ env.AR_HOST }}/${{ env.GCP_PROJECT }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+            - run: docker build -t ${{ steps.img.outputs.uri }} -f api/Dockerfile ./api
+
+    cd-api-dev-push-image:
+        name: cd:api-dev:push-image
+        needs: [cd-api-dev-build-image]
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: google-github-actions/auth@v2
+              with:
+                  credentials_json: ${{ secrets.GCP_SA_KEY_JSON }}
+            - uses: google-github-actions/setup-gcloud@v2
+              with:
+                  project_id: ${{ vars.GCP_PROJECT }}
+            - run: gcloud auth configure-docker ${{ vars.AR_HOST }} --quiet
+            - run: docker push ${{ vars.AR_HOST }}/${{ vars.GCP_PROJECT }}/${{ vars.AR_REPO }}/api:${{ github.sha }}
+
+    cd-api-dev-deploy:
+        name: cd:api-dev:deploy
+        needs: [cd-api-dev-push-image]
+        runs-on: ubuntu-latest
+        env:
+            FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+            FIRESTORE_DATABASE_ID: ${{ vars.FIRESTORE_DATABASE_ID }}
+        steps:
+            - uses: actions/checkout@v4
+            - uses: google-github-actions/auth@v2
+              with:
+                  credentials_json: ${{ secrets.GCP_SA_KEY_JSON }}
+            - uses: google-github-actions/setup-gcloud@v2
+              with:
+                  project_id: ${{ vars.GCP_PROJECT }}
+            - run: |
+                  gcloud run deploy api-dev \
+                    --image ${{ vars.AR_HOST }}/${{ vars.GCP_PROJECT }}/${{ vars.AR_REPO }}/api:${{ github.sha }} \
+                    --region ${{ vars.GCP_REGION }} \
+                    --platform managed \
+                    --allow-unauthenticated \
+                    --min-instances=0 \
+                    --max-instances=3 \
+                    --cpu=1 \
+                    --memory=512Mi \
+                    --timeout=60 \
+                    --ingress=all \
+                    --service-account=${{ vars.GCP_RUN_SA }} \
+                    --set-env-vars NODE_ENV=production,FIREBASE_PROJECT_ID=${{ env.FIREBASE_PROJECT_ID }},FIRESTORE_DATABASE_ID=${{ env.FIRESTORE_DATABASE_ID }}

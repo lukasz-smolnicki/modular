@@ -1,0 +1,52 @@
+name: CI • Pull Request
+on:
+    pull_request:
+        branches: ['dev']
+        paths:
+            - 'api/**'
+            - 'package.json'
+            - '.github/workflows/ci-pr.yml'
+concurrency:
+    group: ci-pr-${{ github.event.pull_request.number }}
+    cancel-in-progress: true
+jobs:
+    detect-changes:
+        name: ci:detect:changes
+        runs-on: ubuntu-latest
+        outputs:
+            api: ${{ steps.filter.outputs.api }}
+        steps:
+            - uses: actions/checkout@v4
+            - uses: dorny/paths-filter@v3
+              id: filter
+              with:
+                  filters: |
+                      api:
+                        - 'api/**'
+    ci-lint:
+        name: ci:lint
+        needs: [detect-changes]
+        if: needs.detect-changes.outputs.api == 'true'
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  cache: npm
+            - run: npm ci
+            - run: npm run lint
+    ci-test-api-e2e:
+        name: ci:test:api-e2e
+        needs: [ci-lint, detect-changes]
+        if: needs.detect-changes.outputs.api == 'true'
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  cache: npm
+            - run: npm ci
+            - working-directory: api
+              run: npm run test:e2e
