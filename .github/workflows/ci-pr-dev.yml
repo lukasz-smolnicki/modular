@@ -4,6 +4,10 @@ on:
     pull_request:
         branches: [dev]
 
+concurrency:
+    group: pr-dev-${{ github.event.pull_request.number }}
+    cancel-in-progress: true
+
 jobs:
     pr-lint:
         name: PR • Lint
