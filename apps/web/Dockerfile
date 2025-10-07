@@ -1,18 +1,15 @@
-# build: Expo Web
 FROM node:20-alpine AS builder
 WORKDIR /app
-
-COPY apps/mobile/package*.json ./
+COPY apps/web/package*.json ./
 RUN npm install --no-audit --no-fund
-
-COPY apps/mobile/tsconfig.json ./tsconfig.json
-COPY apps/mobile/src ./src
-
+COPY apps/web/tsconfig.json ./tsconfig.json
+COPY apps/web/vite.config.ts ./vite.config.ts
+COPY apps/web/index.html ./index.html
+COPY apps/web/src ./src
 ARG API_URL
-ENV EXPO_PUBLIC_API_BASE_URL=$API_URL
+ENV VITE_API_BASE_URL=$API_URL
 ENV CI=1
-
-RUN npx expo export --platform web
+RUN npm run build
 
 FROM node:20-alpine AS runner
 WORKDIR /srv
