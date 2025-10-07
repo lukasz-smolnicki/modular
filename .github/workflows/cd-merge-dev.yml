@@ -1,5 +1,5 @@
 name: CD • Merge → dev
-run-name: 'CD • dev • ${{ github.ref_name }} • ${{ github.sha }}'
+run-name: 'CD • dev • ${{ github.ref_name }} • ${{ github.event.head_commit.message }}'
 
 on:
     push:
@@ -13,19 +13,19 @@ concurrency:
     group: cd-merge-dev
     cancel-in-progress: true
 
-environment:
-    name: dev
-
 jobs:
     deploy-api:
         name: Deploy api-dev
         runs-on: ubuntu-22.04
+        environment:
+            name: dev
         env:
             REGION: ${{ vars.GCP_REGION }}
             PROJECT_ID: ${{ vars.GCP_PROJECT }}
             IMAGE_PATH: ${{ vars.AR_HOST }}/${{ vars.GCP_PROJECT }}/${{ vars.AR_REPO }}/api
             IMAGE_TAG: ${{ github.sha }}
             ENV_COMMON: NODE_ENV=production,JWT_SECRET=${{ vars.JWT_SECRET }},FIREBASE_PROJECT_ID=${{ vars.FIREBASE_PROJECT_ID }},FIRESTORE_DATABASE_ID=${{ vars.FIRESTORE_DATABASE_ID }},WEB_ORIGIN=${{ vars.WEB_DEV_URL }},EXPO_WEB_ORIGIN=${{ vars.MOBILE_WEB_DEV_URL }}
+
         steps:
             - uses: actions/checkout@v4
 

@@ -1,5 +1,5 @@
 name: CI • PR
-run-name: 'CI • PR → ${{ github.base_ref }} • #${{ github.event.pull_request.number }}'
+run-name: 'CI • PR → ${{ github.base_ref }} • #${{ github.event.pull_request.number }} • ${{ github.event.pull_request.title }}'
 
 on:
     pull_request:
@@ -45,7 +45,7 @@ jobs:
     web-e2e:
         runs-on: ubuntu-22.04
         needs: [lint]
-        container: mcr.microsoft.com/playwright:v1.55.1-jammy
+        container: mcr.microsoft.com/playwright:v1.56.0-jammy
         steps:
             - uses: actions/checkout@v4
             - name: Load .env.local
@@ -74,7 +74,7 @@ jobs:
     mobile-e2e:
         runs-on: ubuntu-22.04
         needs: [lint]
-        container: mcr.microsoft.com/playwright:v1.55.1-jammy
+        container: mcr.microsoft.com/playwright:v1.56.0-jammy
         steps:
             - uses: actions/checkout@v4
             - name: Load .env.local
