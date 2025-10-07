@@ -74,13 +74,7 @@ jobs:
                     --image "$IMAGE_URI" \
                     --platform managed \
                     --allow-unauthenticated \
-                    --set-env-vars \
-                      API_PORT=8080, \
-                      JWT_SECRET=${{ vars.JWT_SECRET }}, \
-                      FIREBASE_PROJECT_ID=${{ vars.FIREBASE_PROJECT_ID }}, \
-                      FIRESTORE_DATABASE_ID=${{ vars.FIRESTORE_DATABASE_ID }}, \
-                      WEB_ORIGIN=${{ vars.WEB_DEV_URL }}, \
-                      EXPO_WEB_ORIGIN=${{ vars.MOBILE_WEB_DEV_URL }} \
+                    --set-env-vars "API_PORT=8080,JWT_SECRET=${{ vars.JWT_SECRET }},FIREBASE_PROJECT_ID=${{ vars.FIREBASE_PROJECT_ID }},FIRESTORE_DATABASE_ID=${{ vars.FIRESTORE_DATABASE_ID }},WEB_ORIGIN=${{ vars.WEB_DEV_URL }},EXPO_WEB_ORIGIN=${{ vars.MOBILE_WEB_DEV_URL }}" \
                     --quiet
             - name: Show URL
               run: gcloud run services describe ${{ env.SERVICE_NAME }} --platform managed --region ${{ env.GCP_REGION }} --format='value(status.url)'
