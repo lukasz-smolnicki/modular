@@ -1,0 +1,31 @@
+name: Feature CI (lint only)
+
+on:
+    push:
+        branches:
+            - 'task/**'
+            - 'feature/**'
+            - 'bugfix/**'
+
+concurrency:
+    group: feature-ci-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    lint:
+        name: Lint (ESLint)
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+
+            - name: Install deps (npm install)
+              run: npm install --no-audit --no-fund
+
+            - name: Lint
+              run: npm run lint

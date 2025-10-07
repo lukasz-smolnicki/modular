@@ -1,0 +1,96 @@
+name: PR → dev (lint + e2e)
+
+on:
+    pull_request:
+        branches: [dev]
+
+jobs:
+    lint:
+        runs-on: ubuntu-22.04
+        steps:
+            - uses: actions/checkout@v4
+            - name: Load .env.local
+              run: |
+                  if [ -f .env.local ]; then
+                    grep -v '^\s*#' .env.local | grep -v '^\s*$' >> "$GITHUB_ENV"
+                  fi
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+            - run: npm install --no-audit --no-fund
+            - run: npm run lint
+
+    api-e2e:
+        runs-on: ubuntu-22.04
+        needs: [lint]
+        steps:
+            - uses: actions/checkout@v4
+            - name: Load .env.local
+              run: |
+                  if [ -f .env.local ]; then
+                    grep -v '^\s*#' .env.local | grep -v '^\s*$' >> "$GITHUB_ENV"
+                  fi
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+            - run: npm install --no-audit --no-fund
+            - run: npm run test:api
+
+    web-e2e:
+        runs-on: ubuntu-22.04
+        needs: [lint]
+        container: mcr.microsoft.com/playwright:v1.55.1-jammy
+        steps:
+            - uses: actions/checkout@v4
+            - name: Load .env.local
+              run: |
+                  if [ -f .env.local ]; then
+                    grep -v '^\s*#' .env.local | grep -v '^\s*$' >> "$GITHUB_ENV"
+                  fi
+            - name: Install JRE for Firebase emulators
+              run: |
+                  apt-get update
+                  apt-get install -y --no-install-recommends openjdk-17-jre-headless
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+            - run: npm install --no-audit --no-fund
+            - run: npm run test:web
+            - name: Upload Playwright report (web)
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: web-playwright-report
+                  path: playwright-report
+                  if-no-files-found: ignore
+                  retention-days: 7
+
+    mobile-e2e:
+        runs-on: ubuntu-22.04
+        needs: [lint]
+        container: mcr.microsoft.com/playwright:v1.55.1-jammy
+        steps:
+            - uses: actions/checkout@v4
+            - name: Load .env.local
+              run: |
+                  if [ -f .env.local ]; then
+                    grep -v '^\s*#' .env.local | grep -v '^\s*$' >> "$GITHUB_ENV"
+                  fi
+            - name: Install JRE for Firebase emulators
+              run: |
+                  apt-get update
+                  apt-get install -y --no-install-recommends openjdk-17-jre-headless
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+            - run: npm install --no-audit --no-fund
+            - run: npm i -D -W serve
+            - run: npm run test:mobile
+            - name: Upload Playwright report (mobile)
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: mobile-playwright-report
+                  path: playwright-report
+                  if-no-files-found: ignore
+                  retention-days: 7
