@@ -31,10 +31,10 @@ jobs:
                   filters: |
                       api:
                         - 'apps/api/**'
-                        - '.github/workflows/deploy-services-dev.yml'
+                        - '.github/workflows/cd-merge-dev.yml'
                       mobile:
                         - 'apps/mobile/**'
-                        - '.github/workflows/deploy-services-dev.yml'
+                        - '.github/workflows/cd-merge-dev.yml'
 
     deploy-api:
         needs: [changes]
