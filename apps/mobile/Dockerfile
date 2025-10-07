@@ -14,7 +14,6 @@ ENV CI=1
 
 RUN npx expo export --platform web
 
-# runtime: serwowanie SPA
 FROM node:20-alpine AS runner
 WORKDIR /srv
 RUN npm i -g serve
