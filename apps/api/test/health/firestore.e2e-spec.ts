@@ -5,25 +5,28 @@ import { AppModule } from "../../src/app.module";
 
 jest.setTimeout(15000);
 
+const BASE = process.env.API_BASE_URL;
+
 describe("Health Firestore e2e", () => {
-  let app: INestApplication;
+  let app: INestApplication | undefined;
 
   beforeAll(async () => {
-    const mod = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-    app = mod.createNestApplication();
-    await app.init();
+    if (!BASE) {
+      const mod = await Test.createTestingModule({
+        imports: [AppModule],
+      }).compile();
+      app = mod.createNestApplication();
+      await app.init();
+    }
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) await app.close();
   });
 
   it("GET /health/firestore -> Witamy z FIRESTORE", async () => {
-    const res = await request(app.getHttpServer())
-      .get("/health/firestore")
-      .expect(200);
+    const agent = BASE ? request(BASE) : request(app!.getHttpServer());
+    const res = await agent.get("/health/firestore").expect(200);
     expect(res.body?.message).toBe("Witamy z FIRESTORE");
   });
 });
