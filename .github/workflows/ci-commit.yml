@@ -6,6 +6,7 @@ on:
             - 'task/**'
             - 'feature/**'
             - 'bugfix/**'
+            - 'chore/**'
 
 concurrency:
     group: feature-ci-${{ github.ref }}
