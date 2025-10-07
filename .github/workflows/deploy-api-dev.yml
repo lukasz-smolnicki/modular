@@ -1,0 +1,65 @@
+name: Deploy API to GCP (dev)
+
+on:
+    push:
+        branches: [dev]
+    workflow_dispatch:
+
+concurrency:
+    group: deploy-api-dev-${{ github.ref }}
+    cancel-in-progress: true
+
+env:
+    GCP_PROJECT: ${{ vars.GCP_PROJECT }}
+    GCP_REGION: ${{ vars.GCP_REGION }}
+    AR_HOST: ${{ vars.AR_HOST }}
+    AR_REPO: ${{ vars.AR_REPO }}
+    SERVICE_NAME: api-dev
+    IMAGE_NAME: api
+    IMAGE_TAG: ${{ github.sha }}
+    DOCKERFILE: apps/api/Dockerfile
+    BUILD_CONTEXT: apps/api
+
+jobs:
+    deploy:
+        name: Deploy API
+        runs-on: ubuntu-22.04
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: google-github-actions/setup-gcloud@v2
+              with:
+                  project_id: ${{ env.GCP_PROJECT }}
+
+            - name: Auth with service account key
+              uses: google-github-actions/auth@v2
+              with:
+                  credentials_json: ${{ secrets.GCP_SA_KEY_JSON }}
+
+            - name: Configure docker auth for Artifact Registry
+              run: gcloud auth configure-docker ${{ env.AR_HOST }} --quiet
+
+            - name: Build image
+              run: |
+                  IMAGE_URI=${{ env.AR_HOST }}/${{ env.GCP_PROJECT }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+                  echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+                  docker build -f ${{ env.DOCKERFILE }} -t "$IMAGE_URI" ${{ env.BUILD_CONTEXT }}
+
+            - name: Push image
+              run: docker push "$IMAGE_URI"
+
+            - name: Deploy to Cloud Run
+              run: |
+                  gcloud run deploy ${{ env.SERVICE_NAME }} \
+                    --project ${{ env.GCP_PROJECT }} \
+                    --region ${{ env.GCP_REGION }} \
+                    --image "$IMAGE_URI" \
+                    --platform managed \
+                    --allow-unauthenticated \
+                    --set-env-vars API_PORT=8080,JWT_SECRET=${{ vars.JWT_SECRET }},FIREBASE_PROJECT_ID=${{ vars.FIREBASE_PROJECT_ID }},FIRESTORE_DATABASE_ID=${{ vars.FIRESTORE_DATABASE_ID }},WEB_ORIGIN=${{ vars.WEB_ORIGIN }},EXPO_WEB_ORIGIN=${{ vars.EXPO_WEB_ORIGIN }} \
+                    --quiet
+
+            - name: Show service URL
+              run: gcloud run services describe ${{ env.SERVICE_NAME }} --platform managed --region ${{ env.GCP_REGION }} --format='value(status.url)'
