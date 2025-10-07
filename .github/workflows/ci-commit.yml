@@ -1,20 +1,23 @@
-name: Feature CI (lint only)
+name: CI • Commit
+run-name: 'CI • Commit • ${{ github.ref_name }}'
 
 on:
     push:
         branches:
-            - 'task/**'
             - 'feature/**'
             - 'bugfix/**'
+            - 'task/**'
+            - 'hotfix/**'
+            - 'chore/**'
 
 concurrency:
-    group: feature-ci-${{ github.ref }}
+    group: ci-commit-${{ github.ref }}
     cancel-in-progress: true
 
 jobs:
     lint:
         name: Lint (ESLint)
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-22.04
         steps:
             - name: Checkout
               uses: actions/checkout@v4
@@ -24,7 +27,7 @@ jobs:
               with:
                   node-version: 20
 
-            - name: Install deps (npm install)
+            - name: Install deps
               run: npm install --no-audit --no-fund
 
             - name: Lint
