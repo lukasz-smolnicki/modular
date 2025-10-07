@@ -18,7 +18,7 @@ env:
     IMAGE_NAME: api
     IMAGE_TAG: ${{ github.sha }}
     DOCKERFILE: apps/api/Dockerfile
-    DOCKER_CONTEXT: apps/api
+    BUILD_CONTEXT: apps/api
 
 jobs:
     deploy:
@@ -46,7 +46,7 @@ jobs:
               run: |
                   IMAGE_URI=${{ env.AR_HOST }}/${{ env.GCP_PROJECT }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
                   echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-                  docker build -f ${{ env.DOCKERFILE }} -t "$IMAGE_URI" ${{ env.DOCKER_CONTEXT }}
+                  docker build -f ${{ env.DOCKERFILE }} -t "$IMAGE_URI" ${{ env.BUILD_CONTEXT }}
 
             - name: Push image
               run: docker push "$IMAGE_URI"
