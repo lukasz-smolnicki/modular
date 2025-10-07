@@ -50,6 +50,8 @@ jobs:
         env:
             SERVICE_NAME: api-dev
             IMAGE_NAME: api
+        outputs:
+            url: ${{ steps.apiurl.outputs.url }}
         steps:
             - uses: actions/checkout@v4
             - name: Auth
@@ -95,13 +97,20 @@ jobs:
                     sleep 2
                   done
                   exit 1
+
+    api-smoke:
+        needs: [deploy-api]
+        name: API smoke (reuse e2e)
+        runs-on: ubuntu-22.04
+        steps:
+            - uses: actions/checkout@v4
             - name: Install deps for API tests
               working-directory: apps/api
               run: npm install --no-audit --no-fund
-            - name: Smoke tests on GCP (reuse e2e)
+            - name: Run Jest against deployed API
               working-directory: apps/api
               env:
-                  API_BASE_URL: ${{ steps.apiurl.outputs.url }}
+                  API_BASE_URL: ${{ needs.deploy-api.outputs.url }}
               run: |
                   npx jest -c test/jest-e2e.json --runInBand --testPathPatterns "test/health/.*\.e2e-spec\.ts"
 
@@ -154,6 +163,8 @@ jobs:
         env:
             SERVICE_NAME: web-dev
             IMAGE_NAME: web
+        outputs:
+            url: ${{ steps.weburl.outputs.url }}
         steps:
             - uses: actions/checkout@v4
             - name: Auth
@@ -199,14 +210,14 @@ jobs:
                   exit 1
 
     web-e2e:
-        needs: [deploy-api, deploy-mobile, deploy-web]
+        needs: [deploy-api, deploy-web]
         name: Web smoke (Playwright → deployed web)
         runs-on: ubuntu-22.04
         container: mcr.microsoft.com/playwright:v1.56.0-jammy
         steps:
             - uses: actions/checkout@v4
             - name: Set WEB_BASE_URL
-              run: echo "WEB_BASE_URL=${{ vars.WEB_DEV_URL }}" >> $GITHUB_ENV
+              run: echo "WEB_BASE_URL=${{ needs.deploy-web.outputs.url }}" >> $GITHUB_ENV
             - name: Wait until /health is ready
               run: |
                   for i in {1..60}; do
@@ -221,5 +232,5 @@ jobs:
                   WEB_BASE_URL: ${{ env.WEB_BASE_URL }}
               run: |
                   npx -y @playwright/test@1.56.0 test \
-                    -c apps/web/playwright.cloud.config.ts \
+                    -c apps/web/playwright.cloud.config.js \
                     --reporter=line
