@@ -1,47 +1,163 @@
-name: CD – merge → dev (deploy)
+name: CD PR → dev (deploy + smoke)
 
 on:
-    push:
+    pull_request:
         branches: [dev]
+        types: [opened, synchronize, reopened]
     workflow_dispatch:
+        inputs:
+            force:
+                description: 'Force full pipeline (ignore changed paths)'
+                required: false
+                default: 'false'
+            components:
+                description: 'Optional: comma-separated list (api,web,mobile)'
+                required: false
+                default: ''
 
 concurrency:
-    group: deploy-services-dev-${{ github.ref }}
+    group: cd-merge-dev-${{ github.ref }}
     cancel-in-progress: true
 
+permissions:
+    contents: read
+
 env:
+    NODE_VERSION: '20'
     GCP_PROJECT: ${{ vars.GCP_PROJECT }}
     GCP_REGION: ${{ vars.GCP_REGION }}
     AR_HOST: ${{ vars.AR_HOST }}
     AR_REPO: ${{ vars.AR_REPO }}
     IMAGE_TAG: ${{ github.sha }}
+    FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+    FIRESTORE_DATABASE_ID: ${{ vars.FIRESTORE_DATABASE_ID }}
+    JWT_SECRET: ${{ vars.JWT_SECRET }}
+    WEB_DEV_URL: ${{ vars.WEB_DEV_URL }}
+    MOBILE_WEB_DEV_URL: ${{ vars.MOBILE_WEB_DEV_URL }}
 
 jobs:
     changes:
+        name: Changes (detect / force)
         runs-on: ubuntu-22.04
         outputs:
-            api: ${{ steps.filter.outputs.api }}
-            mobile: ${{ steps.filter.outputs.mobile }}
-            web: ${{ steps.filter.outputs.web }}
+            web: ${{ steps.flags.outputs.web }}
+            api: ${{ steps.flags.outputs.api }}
+            mobile: ${{ steps.flags.outputs.mobile }}
+            any_changed: ${{ steps.flags.outputs.any_changed }}
         steps:
             - uses: actions/checkout@v4
             - id: filter
-              uses: dorny/paths-filter@v3
+              uses: tj-actions/changed-files@v45
               with:
-                  token: ${{ secrets.GITHUB_TOKEN }}
-                  filters: |
-                      api:
-                        - 'apps/api/**'
-                        - '.github/workflows/cd-merge-dev.yml'
-                      mobile:
-                        - 'apps/mobile/**'
-                        - '.github/workflows/cd-merge-dev.yml'
+                  separator: ','
+                  files_yaml: |
                       web:
                         - 'apps/web/**'
-                        - '.github/workflows/cd-merge-dev.yml'
+                        - '.github/workflows/**'
+                      api:
+                        - 'apps/api/**'
+                        - '.github/workflows/**'
+                      mobile:
+                        - 'apps/mobile/**'
+                        - '.github/workflows/**'
+                      any_changed:
+                        - 'apps/**'
+                        - 'packages/**'
+                        - '.github/**'
+                        - 'package.json'
+                        - 'package-lock.json'
+                        - 'turbo.json'
+            - id: flags
+              shell: bash
+              env:
+                  EVENT_NAME: ${{ github.event_name }}
+                  FORCE: ${{ inputs.force }}
+                  COMPONENTS: ${{ inputs.components }}
+                  F_WEB: ${{ steps.filter.outputs.web }}
+                  F_API: ${{ steps.filter.outputs.api }}
+                  F_MOBILE: ${{ steps.filter.outputs.mobile }}
+                  F_ANY: ${{ steps.filter.outputs.any_changed }}
+              run: |
+                  set -euo pipefail
+                  norm_bool () {
+                    local v="$(echo "${1:-}" | tr '[:upper:]' '[:lower:]' | xargs)"
+                    [[ "$v" == "true" || "$v" == "1" || "$v" == "yes" || "$v" == "on" ]]
+                  }
+                  web="$F_WEB"; api="$F_API"; mobile="$F_MOBILE"; any="$F_ANY"
+                  force_input="$(echo "${FORCE:-}" | tr '[:upper:]' '[:lower:]' | xargs)"
+                  comps_input="$(echo "${COMPONENTS:-}" | tr '[:upper:]' '[:lower:]')"
+                  if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+                    if norm_bool "$force_input"; then
+                      web=true; api=true; mobile=true; any=true
+                    fi
+                    if [[ -n "$comps_input" ]]; then
+                      web=false; api=false; mobile=false
+                      IFS=',' read -ra parts <<< "$comps_input"
+                      for c in "${parts[@]}"; do
+                        c="$(echo "$c" | xargs)"
+                        [[ "$c" == "web" ]] && web=true
+                        [[ "$c" == "api" ]] && api=true
+                        [[ "$c" == "mobile" ]] && mobile=true
+                      done
+                      any=true
+                    fi
+                  fi
+                  echo "web=$web" >> "$GITHUB_OUTPUT"
+                  echo "api=$api" >> "$GITHUB_OUTPUT"
+                  echo "mobile=$mobile" >> "$GITHUB_OUTPUT"
+                  echo "any_changed=$any" >> "$GITHUB_OUTPUT"
+
+    lint:
+        name: Lint (ESLint)
+        runs-on: ubuntu-22.04
+        needs: changes
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+            - name: Install
+              run: npm install --no-audit --no-fund
+            - name: Lint
+              run: npm run lint
+
+    build:
+        name: Build Artifacts (web + mobile + api)
+        runs-on: ubuntu-22.04
+        needs: lint
+        if: |
+            needs.changes.outputs.web == 'true' ||
+            needs.changes.outputs.mobile == 'true' ||
+            needs.changes.outputs.api == 'true' ||
+            needs.changes.outputs.any_changed == 'true'
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+            - name: Install
+              run: npm install --no-audit --no-fund
+            - name: Build WEB
+              if: needs.changes.outputs.web == 'true'
+              run: npm run -w web build
+            - name: Build MOBILE (Expo web)
+              if: needs.changes.outputs.mobile == 'true'
+              run: npm run -w mobile build:web
+            - name: Build API (Nest compile)
+              if: needs.changes.outputs.api == 'true'
+              run: npm run -w api build
+            - name: Upload built artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: build-artifacts
+                  path: |
+                      apps/web/dist/**
+                      apps/mobile/dist/**
+                      apps/api/dist/**
+                  if-no-files-found: ignore
 
     deploy-api:
-        needs: [changes]
+        needs: [changes, build]
         if: needs.changes.outputs.api == 'true'
         name: Deploy API
         runs-on: ubuntu-22.04
@@ -80,7 +196,7 @@ jobs:
                     --image    "$IMAGE_URI" \
                     --platform managed \
                     --allow-unauthenticated \
-                    --set-env-vars "API_PORT=8080,JWT_SECRET=${{ vars.JWT_SECRET }},FIREBASE_PROJECT_ID=${{ vars.FIREBASE_PROJECT_ID }},FIRESTORE_DATABASE_ID=${{ vars.FIRESTORE_DATABASE_ID }},WEB_ORIGIN=${{ vars.WEB_DEV_URL }},EXPO_WEB_ORIGIN=${{ vars.MOBILE_WEB_DEV_URL }},WEB_ORIGIN_REGEX=^https://web-dev-[\\w-]+\\.a\\.run\\.app$,EXPO_WEB_ORIGIN_REGEX=^https://mobile-web-dev-[\\w-]+\\.a\\.run\\.app$" \
+                    --set-env-vars "API_PORT=8080,JWT_SECRET=${{ env.JWT_SECRET }},FIREBASE_PROJECT_ID=${{ env.FIREBASE_PROJECT_ID }},FIRESTORE_DATABASE_ID=${{ env.FIRESTORE_DATABASE_ID }},WEB_ORIGIN=${{ env.WEB_DEV_URL }},EXPO_WEB_ORIGIN=${{ env.MOBILE_WEB_DEV_URL }},WEB_ORIGIN_REGEX=^https://web-dev-[\\w-]+\\.a\\.run\\.app$,EXPO_WEB_ORIGIN_REGEX=^https://mobile-web-dev-[\\w-]+\\.a\\.run\\.app$" \
                     --quiet
             - name: Read service URL
               id: apiurl
@@ -115,7 +231,7 @@ jobs:
                   npx jest -c test/jest-e2e.json --runInBand --testPathPatterns "test/health/.*\.e2e-spec\.ts"
 
     deploy-mobile:
-        needs: [changes]
+        needs: [changes, build]
         if: needs.changes.outputs.mobile == 'true'
         name: Deploy Mobile Web
         runs-on: ubuntu-22.04
@@ -171,7 +287,7 @@ jobs:
                   exit 1
 
     deploy-web:
-        needs: [changes]
+        needs: [changes, build]
         if: needs.changes.outputs.web == 'true'
         name: Deploy Web
         runs-on: ubuntu-22.04
@@ -279,3 +395,47 @@ jobs:
                   npx -y @playwright/test@1.56.0 test \
                     -c apps/mobile/playwright.cloud.config.ts \
                     --reporter=line
+
+    rollback_on_failure:
+        name: Rollback (on smoke failure)
+        runs-on: ubuntu-22.04
+        needs: [api-smoke, mobile-e2e, web-e2e]
+        if: |
+            needs.api-smoke.result == 'failure' ||
+            needs.mobile-e2e.result == 'failure' ||
+            needs.web-e2e.result == 'failure'
+        steps:
+            - uses: google-github-actions/auth@v2
+              with:
+                  credentials_json: ${{ secrets.GCP_SA_KEY_JSON }}
+            - uses: google-github-actions/setup-gcloud@v2
+              with:
+                  project_id: ${{ env.GCP_PROJECT }}
+            - name: Rollback API
+              if: needs.changes.outputs.api == 'true'
+              run: |
+                  SERVICE="api-dev"
+                  REGION="${{ env.GCP_REGION }}"
+                  PREV_REV=$(gcloud run services describe $SERVICE --region $REGION --format='value(status.traffic[1].revisionName)')
+                  if [ -n "$PREV_REV" ]; then
+                    gcloud run services update-traffic $SERVICE --region $REGION --to-revisions $PREV_REV=100
+                  fi
+            - name: Rollback Web
+              if: needs.changes.outputs.web == 'true'
+              run: |
+                  SERVICE="web-dev"
+                  REGION="${{ env.GCP_REGION }}"
+                  PREV_REV=$(gcloud run services describe $SERVICE --region $REGION --format='value(status.traffic[1].revisionName)')
+                  if [ -n "$PREV_REV" ]; then
+                    gcloud run services update-traffic $SERVICE --region $REGION --to-revisions $PREV_REV=100
+                  fi
+            - name: Rollback Mobile
+              if: needs.changes.outputs.mobile == 'true'
+              run: |
+                  SERVICE="mobile-web-dev"
+                  REGION="${{ env.GCP_REGION }}"
+                  PREV_REV=$(gcloud run services describe $SERVICE --region $REGION --format='value(status.traffic[1].revisionName)')
+                  if [ -n "$PREV_REV" ]; then
+                    gcloud run services update-traffic $SERVICE --region $REGION --to-revisions $PREV_REV=100
+                  fi
+            - run: exit 1
