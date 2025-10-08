@@ -3,6 +3,8 @@ import { defineConfig } from "@playwright/test";
 
 const API_PORT = Number(process.env.API_PORT ?? 3000);
 const WEB_PORT = Number(process.env.EXPO_WEB_PORT ?? 8081);
+const API_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL || `http://localhost:${API_PORT}`;
 
 export default defineConfig({
   testDir: "./test",
@@ -26,14 +28,18 @@ export default defineConfig({
         ...process.env,
         WEB_ORIGIN: `http://localhost:${WEB_PORT}`,
         EXPO_WEB_ORIGIN: `http://localhost:${WEB_PORT}`,
+        FIREBASE_EMULATORS_HOST: "127.0.0.1:8080",
       } as Record<string, string>,
     },
     {
-      command: `npx expo export --platform web && npx serve -s dist -l ${WEB_PORT}`,
+      command: `npx expo export --platform web && npx serve -s dist -l ${WEB_PORT} --no-clipboard`,
       port: WEB_PORT,
       reuseExistingServer: true,
       cwd: "../../apps/mobile",
-      env: process.env as Record<string, string>,
+      env: {
+        ...process.env,
+        EXPO_PUBLIC_API_BASE_URL: API_URL,
+      } as Record<string, string>,
     },
   ],
 });

@@ -1,12 +1,13 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY apps/web/package*.json ./
-RUN npm install --no-audit --no-fund
+RUN npm ci --no-audit --no-fund
 COPY apps/web/tsconfig.json ./tsconfig.json
 COPY apps/web/vite.config.ts ./vite.config.ts
 COPY apps/web/index.html ./index.html
+COPY apps/web/public ./public
 COPY apps/web/src ./src
-ARG API_URL
+ARG API_URL=""
 ENV VITE_API_BASE_URL=$API_URL
 ENV CI=1
 RUN npm run build
@@ -17,4 +18,4 @@ RUN npm i -g serve
 COPY --from=builder /app/dist ./dist
 ENV PORT=8080
 EXPOSE 8080
-CMD ["serve", "-s", "dist", "-l", "8080"]
+CMD ["serve", "-s", "dist", "-l", "8080", "--no-clipboard"]
