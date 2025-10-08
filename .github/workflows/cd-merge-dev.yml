@@ -1,281 +1,339 @@
-name: CD – merge → dev (deploy)
+name: cd-merge-dev
 
 on:
-    push:
+    pull_request:
         branches: [dev]
-    workflow_dispatch:
 
 concurrency:
-    group: deploy-services-dev-${{ github.ref }}
+    group: cd-merge-dev-${{ github.ref }}
     cancel-in-progress: true
 
+permissions:
+    contents: read
+    id-token: write
+    deployments: write
+
 env:
-    GCP_PROJECT: ${{ vars.GCP_PROJECT }}
+    NODE_VERSION: '20'
+    PNPM_VERSION: '9'
+    GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID_STAGING }}
     GCP_REGION: ${{ vars.GCP_REGION }}
-    AR_HOST: ${{ vars.AR_HOST }}
-    AR_REPO: ${{ vars.AR_REPO }}
-    IMAGE_TAG: ${{ github.sha }}
+    STAGING_WEB_HOSTNAME: ${{ vars.STAGING_WEB_HOSTNAME }}
+    STAGING_MOBILE_HOSTNAME: ${{ vars.STAGING_MOBILE_HOSTNAME }}
+    STAGING_API_URL: ${{ vars.STAGING_API_URL }}
 
 jobs:
     changes:
-        runs-on: ubuntu-22.04
+        name: Detect changed paths
+        runs-on: ubuntu-latest
         outputs:
-            api: ${{ steps.filter.outputs.api }}
-            mobile: ${{ steps.filter.outputs.mobile }}
-            web: ${{ steps.filter.outputs.web }}
+            web_changed: ${{ steps.filter.outputs.web }}
+            api_changed: ${{ steps.filter.outputs.api }}
+            mobile_changed: ${{ steps.filter.outputs.mobile }}
+            any_changed: ${{ steps.filter.outputs.any_changed }}
         steps:
             - uses: actions/checkout@v4
             - id: filter
-              uses: dorny/paths-filter@v3
+              uses: tj-actions/changed-files@v45
               with:
-                  token: ${{ secrets.GITHUB_TOKEN }}
-                  filters: |
-                      api:
-                        - 'apps/api/**'
-                        - '.github/workflows/cd-merge-dev.yml'
-                      mobile:
-                        - 'apps/mobile/**'
-                        - '.github/workflows/cd-merge-dev.yml'
+                  separator: ','
+                  files_yaml: |
                       web:
                         - 'apps/web/**'
-                        - '.github/workflows/cd-merge-dev.yml'
+                      api:
+                        - 'apps/api/**'
+                      mobile:
+                        - 'apps/mobile/**'
+                      any_changed:
+                        - 'apps/**'
+                        - 'packages/**'
+                        - 'pnpm-lock.yaml'
+                        - 'turbo.json'
+                        - 'package.json'
 
-    deploy-api:
-        needs: [changes]
-        if: needs.changes.outputs.api == 'true'
-        name: Deploy API
-        runs-on: ubuntu-22.04
-        permissions:
-            contents: read
-        env:
-            SERVICE_NAME: api-dev
-            IMAGE_NAME: api
-        outputs:
-            url: ${{ steps.apiurl.outputs.url }}
+    lint:
+        name: Lint
+        runs-on: ubuntu-latest
+        needs: changes
         steps:
             - uses: actions/checkout@v4
-            - name: Auth
-              uses: google-github-actions/auth@v2
+            - uses: pnpm/action-setup@v4
               with:
-                  credentials_json: ${{ secrets.GCP_SA_KEY_JSON }}
-            - name: Setup gcloud
-              uses: google-github-actions/setup-gcloud@v2
+                  version: ${{ env.PNPM_VERSION }}
+            - uses: actions/setup-node@v4
               with:
-                  project_id: ${{ env.GCP_PROJECT }}
-            - name: Docker auth
-              run: gcloud auth configure-docker ${{ env.AR_HOST }} --quiet
-            - name: Build image
-              working-directory: apps/api
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: 'pnpm'
+            - name: Install
+              run: pnpm install --frozen-lockfile
+            - name: Lint
+              run: pnpm lint
+
+    test_api_e2e:
+        name: API E2E (emulator)
+        runs-on: ubuntu-latest
+        needs: lint
+        if: needs.changes.outputs.api_changed == 'true'
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+              with:
+                  version: ${{ env.PNPM_VERSION }}
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: 'pnpm'
+            - name: Install
+              run: pnpm install --frozen-lockfile
+            - name: Start API (emulator) & run E2E
               run: |
-                  IMAGE_URI=${{ env.AR_HOST }}/${{ env.GCP_PROJECT }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-                  echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-                  docker build -t "$IMAGE_URI" .
-            - name: Push image
-              run: docker push "$IMAGE_URI"
+                  pnpm --filter @crm/api build
+                  pnpm --filter @crm/api start:emulator &
+                  npx -y wait-on tcp:3001
+                  pnpm --filter @crm/api test:e2e
+            - name: Upload API E2E report
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: api-e2e-report
+                  path: apps/api/test-results/**
+                  if-no-files-found: ignore
+
+    test_web_e2e:
+        name: Web E2E (local)
+        runs-on: ubuntu-latest
+        needs: lint
+        if: needs.changes.outputs.web_changed == 'true'
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+              with:
+                  version: ${{ env.PNPM_VERSION }}
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: 'pnpm'
+            - name: Install
+              run: pnpm install --frozen-lockfile
+            - name: Build web
+              run: pnpm --filter @crm/web build
+            - name: Start web locally
+              run: pnpm --filter @crm/web start &
+            - name: Wait for web
+              run: npx -y wait-on http://localhost:3000/health
+            - name: Run Playwright (local)
+              run: |
+                  npx -y @playwright/test@1.56.0 install --with-deps
+                  BASE_URL=http://localhost:3000 npx -y @playwright/test@1.56.0 test apps/web/test
+            - name: Upload Web E2E report
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: web-e2e-report-local
+                  path: apps/web/test-results/**
+                  if-no-files-found: ignore
+
+    test_mobile_e2e:
+        name: Mobile E2E (Expo Web)
+        runs-on: ubuntu-latest
+        needs: lint
+        if: needs.changes.outputs.mobile_changed == 'true'
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+              with:
+                  version: ${{ env.PNPM_VERSION }}
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: 'pnpm'
+            - name: Install
+              run: pnpm install --frozen-lockfile
+            - name: Build Expo Web
+              run: pnpm --filter @crm/mobile build:web
+            - name: Start Expo Web preview
+              run: pnpm --filter @crm/mobile preview:web &
+            - name: Wait for mobile web
+              run: npx -y wait-on http://localhost:5173
+            - name: Run Playwright (Expo Web)
+              run: |
+                  npx -y @playwright/test@1.56.0 install --with-deps
+                  BASE_URL=http://localhost:5173 npx -y @playwright/test@1.56.0 test apps/mobile/test
+            - name: Upload Mobile E2E report
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: mobile-e2e-report
+                  path: apps/mobile/test-results/**
+                  if-no-files-found: ignore
+
+    build:
+        name: Build Artifacts
+        runs-on: ubuntu-latest
+        needs: [lint, test_api_e2e, test_web_e2e, test_mobile_e2e]
+        if: |
+            always() &&
+            (needs.lint.result == 'success') &&
+            (needs.test_api_e2e.result == 'success' || needs.changes.outputs.api_changed != 'true') &&
+            (needs.test_web_e2e.result == 'success' || needs.changes.outputs.web_changed != 'true') &&
+            (needs.test_mobile_e2e.result == 'success' || needs.changes.outputs.mobile_changed != 'true')
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+              with:
+                  version: ${{ env.PNPM_VERSION }}
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: 'pnpm'
+            - name: Install
+              run: pnpm install --frozen-lockfile
+            - name: Build API
+              if: needs.changes.outputs.api_changed == 'true'
+              run: pnpm --filter @crm/api build
+            - name: Build WEB
+              if: needs.changes.outputs.web_changed == 'true'
+              run: pnpm --filter @crm/web build
+            - name: Build MOBILE (Expo web artifact)
+              if: needs.changes.outputs.mobile_changed == 'true'
+              run: pnpm --filter @crm/mobile build:web
+            - name: Upload built artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: build-artifacts
+                  path: |
+                      apps/api/dist/**
+                      apps/web/dist/**
+                      apps/mobile/dist-web/**
+                  if-no-files-found: ignore
+
+    deploy_api:
+        name: Deploy API (nest)
+        runs-on: ubuntu-latest
+        needs: build
+        if: needs.changes.outputs.api_changed == 'true'
+        steps:
+            - uses: actions/checkout@v4
+            - uses: google-github-actions/auth@v2
+              with:
+                  workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+                  service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+            - uses: google-github-actions/setup-gcloud@v2
+            - name: Build & push API image
+              run: gcloud builds submit apps/api --tag "gcr.io/${GCP_PROJECT_ID}/api:${{ github.sha }}"
             - name: Deploy to Cloud Run
               run: |
-                  gcloud run deploy ${{ env.SERVICE_NAME }} \
-                    --project  ${{ env.GCP_PROJECT }} \
-                    --region   ${{ env.GCP_REGION }} \
-                    --image    "$IMAGE_URI" \
+                  gcloud run deploy api-staging \
+                    --project ${GCP_PROJECT_ID} \
+                    --region ${GCP_REGION} \
+                    --image gcr.io/${GCP_PROJECT_ID}/api:${{ github.sha }} \
                     --platform managed \
                     --allow-unauthenticated \
-                    --set-env-vars "API_PORT=8080,JWT_SECRET=${{ vars.JWT_SECRET }},FIREBASE_PROJECT_ID=${{ vars.FIREBASE_PROJECT_ID }},FIRESTORE_DATABASE_ID=${{ vars.FIRESTORE_DATABASE_ID }},WEB_ORIGIN=${{ vars.WEB_DEV_URL }},EXPO_WEB_ORIGIN=${{ vars.MOBILE_WEB_DEV_URL }},WEB_ORIGIN_REGEX=^https://web-dev-[\\w-]+\\.a\\.run\\.app$,EXPO_WEB_ORIGIN_REGEX=^https://mobile-web-dev-[\\w-]+\\.a\\.run\\.app$" \
-                    --quiet
-            - name: Read service URL
-              id: apiurl
-              run: |
-                  URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --platform managed --region ${{ env.GCP_REGION }} --format='value(status.url)')
-                  echo "url=$URL" >> $GITHUB_OUTPUT
-                  echo "SERVICE_URL=$URL" >> $GITHUB_ENV
-            - name: Wait until healthy
-              run: |
-                  for i in {1..60}; do
-                    if curl -fsS "$SERVICE_URL/health/api" >/dev/null; then
-                      exit 0
-                    fi
-                    sleep 2
-                  done
-                  exit 1
+                    --set-env-vars NODE_ENV=staging
 
-    api-smoke:
-        needs: [deploy-api]
-        name: API smoke (reuse e2e)
-        runs-on: ubuntu-22.04
+    deploy_mobile_web:
+        name: Deploy Mobile (expo:web)
+        runs-on: ubuntu-latest
+        needs: build
+        if: needs.changes.outputs.mobile_changed == 'true'
         steps:
             - uses: actions/checkout@v4
-            - name: Install deps for API tests
-              working-directory: apps/api
-              run: npm install --no-audit --no-fund
-            - name: Run Jest against deployed API
-              working-directory: apps/api
-              env:
-                  API_BASE_URL: ${{ needs.deploy-api.outputs.url }}
-              run: |
-                  npx jest -c test/jest-e2e.json --runInBand --testPathPatterns "test/health/.*\.e2e-spec\.ts"
+            - run: npm i -g firebase-tools
+            - name: Deploy Mobile to Hosting
+              run: firebase deploy --only hosting:mobile-staging --project ${{ vars.FIREBASE_PROJECT_ID_STAGING }}
 
-    deploy-mobile:
-        needs: [changes]
-        if: needs.changes.outputs.mobile == 'true'
-        name: Deploy Mobile Web
-        runs-on: ubuntu-22.04
-        permissions:
-            contents: read
-        env:
-            SERVICE_NAME: mobile-web-dev
-            IMAGE_NAME: mobile-web
-        outputs:
-            url: ${{ steps.moburl.outputs.url }}
+    deploy_web:
+        name: Deploy Web (next)
+        runs-on: ubuntu-latest
+        needs: build
+        if: needs.changes.outputs.web_changed == 'true'
         steps:
             - uses: actions/checkout@v4
-            - name: Auth
-              uses: google-github-actions/auth@v2
-              with:
-                  credentials_json: ${{ secrets.GCP_SA_KEY_JSON }}
-            - name: Setup gcloud
-              uses: google-github-actions/setup-gcloud@v2
-              with:
-                  project_id: ${{ env.GCP_PROJECT }}
-            - name: Docker auth
-              run: gcloud auth configure-docker ${{ env.AR_HOST }} --quiet
-            - name: Build image
-              run: |
-                  IMAGE_URI=${{ env.AR_HOST }}/${{ env.GCP_PROJECT }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-                  echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-                  docker build -f apps/mobile/Dockerfile --build-arg API_URL=${{ vars.API_DEV_URL }} -t "$IMAGE_URI" .
-            - name: Push image
-              run: docker push "$IMAGE_URI"
-            - name: Deploy to Cloud Run
-              run: |
-                  gcloud run deploy ${{ env.SERVICE_NAME }} \
-                    --project  ${{ env.GCP_PROJECT }} \
-                    --region   ${{ env.GCP_REGION }} \
-                    --image    "$IMAGE_URI" \
-                    --platform managed \
-                    --allow-unauthenticated \
-                    --quiet
-            - name: Read service URL
-              id: moburl
-              run: |
-                  URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --platform managed --region ${{ env.GCP_REGION }} --format='value(status.url)')
-                  echo "url=$URL" >> $GITHUB_OUTPUT
-                  echo "SERVICE_URL=$URL" >> $GITHUB_ENV
-            - name: Wait until ready
-              run: |
-                  for i in {1..60}; do
-                    if curl -fsS "$SERVICE_URL/health" >/dev/null; then
-                      exit 0
-                    fi
-                    sleep 2
-                  done
-                  exit 1
+            - run: npm i -g firebase-tools
+            - name: Deploy Web to Hosting
+              run: firebase deploy --only hosting:staging --project ${{ vars.FIREBASE_PROJECT_ID_STAGING }}
 
-    deploy-web:
-        needs: [changes]
-        if: needs.changes.outputs.web == 'true'
-        name: Deploy Web
-        runs-on: ubuntu-22.04
-        permissions:
-            contents: read
-        env:
-            SERVICE_NAME: web-dev
-            IMAGE_NAME: web
-        outputs:
-            url: ${{ steps.weburl.outputs.url }}
+    api_smoke:
+        name: API smoke (ping)
+        runs-on: ubuntu-latest
+        needs: deploy_api
+        if: needs.changes.outputs.api_changed == 'true'
+        steps:
+            - run: curl -sfL "${{ env.STAGING_API_URL }}/health"
+
+    mobile_smoke:
+        name: Mobile smoke (Playwright → deployed)
+        runs-on: ubuntu-latest
+        needs: deploy_mobile_web
+        if: needs.changes.outputs.mobile_changed == 'true'
         steps:
             - uses: actions/checkout@v4
-            - name: Auth
-              uses: google-github-actions/auth@v2
+            - uses: actions/setup-node@v4
               with:
-                  credentials_json: ${{ secrets.GCP_SA_KEY_JSON }}
-            - name: Setup gcloud
-              uses: google-github-actions/setup-gcloud@v2
-              with:
-                  project_id: ${{ env.GCP_PROJECT }}
-            - name: Docker auth
-              run: gcloud auth configure-docker ${{ env.AR_HOST }} --quiet
-            - name: Build image
-              run: |
-                  IMAGE_URI=${{ env.AR_HOST }}/${{ env.GCP_PROJECT }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-                  echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-                  docker build -f apps/web/Dockerfile --build-arg API_URL=${{ vars.API_DEV_URL }} -t "$IMAGE_URI" .
-            - name: Push image
-              run: docker push "$IMAGE_URI"
-            - name: Deploy to Cloud Run
-              run: |
-                  gcloud run deploy ${{ env.SERVICE_NAME }} \
-                    --project  ${{ env.GCP_PROJECT }} \
-                    --region   ${{ env.GCP_REGION }} \
-                    --image    "$IMAGE_URI" \
-                    --platform managed \
-                    --allow-unauthenticated \
-                    --quiet
-            - name: Read service URL
-              id: weburl
-              run: |
-                  URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --platform managed --region ${{ env.GCP_REGION }} --format='value(status.url)')
-                  echo "url=$URL" >> $GITHUB_OUTPUT
-                  echo "SERVICE_URL=$URL" >> $GITHUB_ENV
-            - name: Wait until ready
-              run: |
-                  for i in {1..60}; do
-                    if curl -fsS "$SERVICE_URL/health" >/dev/null; then
-                      exit 0
-                    fi
-                    sleep 2
-                  done
-                  exit 1
-
-    web-e2e:
-        needs: [deploy-api, deploy-web]
-        name: Web smoke (Playwright → deployed web)
-        runs-on: ubuntu-22.04
-        container: mcr.microsoft.com/playwright:v1.56.0-jammy
-        steps:
-            - uses: actions/checkout@v4
-            - run: echo "WEB_BASE_URL=${{ needs.deploy-web.outputs.url }}" >> $GITHUB_ENV
-            - name: Wait until /health is ready
-              run: |
-                  for i in {1..60}; do
-                    if curl -fsS "$WEB_BASE_URL/health" >/dev/null; then
-                      exit 0
-                    fi
-                    sleep 2
-                  done
-                  exit 1
-            - name: Prepare Playwright runner (no-save)
-              working-directory: apps/web
-              run: npm i -D --no-save @playwright/test@1.56.0
+                  node-version: ${{ env.NODE_VERSION }}
+            - run: npx -y @playwright/test@1.56.0 install --with-deps
             - env:
-                  WEB_BASE_URL: ${{ env.WEB_BASE_URL }}
+                  BASE_URL: https://${{ env.STAGING_MOBILE_HOSTNAME }}
               run: |
-                  npx -y @playwright/test@1.56.0 test \
-                    -c apps/web/playwright.cloud.config.ts \
-                    --reporter=line
+                  echo "$BASE_URL"
+                  npx -y @playwright/test@1.56.0 test apps/mobile/test/health
+            - if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: mobile-smoke-staging
+                  path: apps/mobile/test-results/**
+                  if-no-files-found: ignore
 
-    mobile-e2e:
-        needs: [deploy-api, deploy-mobile]
-        name: Mobile smoke (Playwright → deployed mobile web)
-        runs-on: ubuntu-22.04
-        container: mcr.microsoft.com/playwright:v1.56.0-jammy
+    web_smoke:
+        name: Web smoke (Playwright → deployed)
+        runs-on: ubuntu-latest
+        needs: deploy_web
+        if: needs.changes.outputs.web_changed == 'true'
         steps:
             - uses: actions/checkout@v4
-            - run: echo "WEB_BASE_URL=${{ needs.deploy-mobile.outputs.url }}" >> $GITHUB_ENV
-            - name: Wait until /health is ready
-              run: |
-                  for i in {1..60}; do
-                    if curl -fsS "$WEB_BASE_URL/health" >/dev/null; then
-                      exit 0
-                    fi
-                    sleep 2
-                  done
-                  exit 1
-            - name: Prepare Playwright runner (no-save)
-              working-directory: apps/mobile
-              run: npm i -D --no-save @playwright/test@1.56.0
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+            - run: npx -y @playwright/test@1.56.0 install --with-deps
             - env:
-                  WEB_BASE_URL: ${{ env.WEB_BASE_URL }}
+                  BASE_URL: https://${{ env.STAGING_WEB_HOSTNAME }}
               run: |
-                  npx -y @playwright/test@1.56.0 test \
-                    -c apps/mobile/playwright.cloud.config.ts \
-                    --reporter=line
+                  echo "$BASE_URL"
+                  npx -y @playwright/test@1.56.0 test apps/web/test/health
+            - if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: web-smoke-staging
+                  path: apps/web/test-results/**
+                  if-no-files-found: ignore
+
+    rollback_on_failure:
+        name: Rollback (on smoke failure)
+        runs-on: ubuntu-latest
+        needs: [api_smoke, mobile_smoke, web_smoke]
+        if: |
+            needs.api_smoke.result == 'failure' ||
+            needs.mobile_smoke.result == 'failure' ||
+            needs.web_smoke.result == 'failure'
+        steps:
+            - uses: google-github-actions/auth@v2
+              with:
+                  workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+                  service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+            - uses: google-github-actions/setup-gcloud@v2
+            - name: Rollback API
+              if: needs.changes.outputs.api_changed == 'true'
+              run: |
+                  SERVICE="api-staging"
+                  REGION="${{ env.GCP_REGION }}"
+                  PREV_REV=$(gcloud run services describe $SERVICE --region $REGION --format='value(status.traffic[1].revisionName)')
+                  if [ -n "$PREV_REV" ]; then
+                    gcloud run services update-traffic $SERVICE --region $REGION --to-revisions $PREV_REV=100
+                  fi
+            - name: Rollback Web
+              if: needs.changes.outputs.web_changed == 'true'
+              run: firebase hosting:channel:deploy live --project ${{ vars.FIREBASE_PROJECT_ID_STAGING }} --only hosting:staging || true
+            - name: Rollback Mobile
+              if: needs.changes.outputs.mobile_changed == 'true'
+              run: firebase hosting:channel:deploy live --project ${{ vars.FIREBASE_PROJECT_ID_STAGING }} --only hosting:mobile-staging || true
+            - run: exit 1
