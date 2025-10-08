@@ -59,9 +59,8 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: ${{ env.NODE_VERSION }}
-                  cache: npm
             - name: Install
-              run: npm ci
+              run: npm install --no-audit --no-fund
             - name: Lint
               run: npm run lint
 
@@ -75,26 +74,21 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: ${{ env.NODE_VERSION }}
-                  cache: npm
             - name: Install
-              run: npm ci
-            - name: Build API
-              if: needs.changes.outputs.api_changed == 'true'
-              run: npm run -w @crm/api build
+              run: npm install --no-audit --no-fund
             - name: Build WEB
               if: needs.changes.outputs.web_changed == 'true'
-              run: npm run -w @crm/web build
+              run: npm run -w web build
             - name: Build MOBILE (Expo web)
               if: needs.changes.outputs.mobile_changed == 'true'
-              run: npm run -w @crm/mobile build:web
+              run: npm run -w mobile build:web
             - name: Upload built artifacts
               uses: actions/upload-artifact@v4
               with:
                   name: build-artifacts
                   path: |
-                      apps/api/dist/**
                       apps/web/dist/**
-                      apps/mobile/dist-web/**
+                      apps/mobile/dist/**
                   if-no-files-found: ignore
 
     deploy_api:
