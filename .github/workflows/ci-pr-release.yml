@@ -1,0 +1,133 @@
+name: CI PR → release (lint + e2e + patch bump)
+
+on:
+    pull_request:
+        branches:
+            - 'release/**'
+
+concurrency:
+    group: pr-release-${{ github.event.pull_request.number }}
+    cancel-in-progress: true
+
+permissions:
+    contents: write
+
+jobs:
+    pr-lint:
+        name: PR • Lint
+        runs-on: ubuntu-22.04
+        steps:
+            - uses: actions/checkout@v4
+            - name: Load .env.local
+              run: |
+                  if [ -f .env.local ]; then
+                    grep -v '^\s*#' .env.local | grep -v '^\s*$' >> "$GITHUB_ENV"
+                  fi
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+            - run: npm install --no-audit --no-fund
+            - run: npm run lint
+
+    pr-api-e2e:
+        name: PR • API e2e
+        runs-on: ubuntu-22.04
+        needs: [pr-lint]
+        steps:
+            - uses: actions/checkout@v4
+            - name: Load .env.local
+              run: |
+                  if [ -f .env.local ]; then
+                    grep -v '^\s*#' .env.local | grep -v '^\s*$' >> "$GITHUB_ENV"
+                  fi
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+            - run: npm install --no-audit --no-fund
+            - run: npm run test:api
+
+    pr-web-e2e:
+        name: PR • Web e2e
+        runs-on: ubuntu-22.04
+        needs: [pr-lint]
+        container: mcr.microsoft.com/playwright:v1.56.0-jammy
+        steps:
+            - uses: actions/checkout@v4
+            - name: Load .env.local
+              run: |
+                  if [ -f .env.local ]; then
+                    grep -v '^\s*#' .env.local | grep -v '^\s*$' >> "$GITHUB_ENV"
+                  fi
+            - name: Install JRE for Firebase emulators
+              run: |
+                  apt-get update
+                  apt-get install -y --no-install-recommends openjdk-17-jre-headless
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+            - run: npm install --no-audit --no-fund
+            - run: npm run test:web
+            - name: Upload Playwright report (web)
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: web-playwright-report
+                  path: playwright-report
+                  if-no-files-found: ignore
+                  retention-days: 7
+
+    pr-mobile-e2e:
+        name: PR • Mobile e2e (Expo Web)
+        runs-on: ubuntu-22.04
+        needs: [pr-lint]
+        container: mcr.microsoft.com/playwright:v1.56.0-jammy
+        steps:
+            - uses: actions/checkout@v4
+            - name: Load .env.local
+              run: |
+                  if [ -f .env.local ]; then
+                    grep -v '^\s*#' .env.local | grep -v '^\s*$' >> "$GITHUB_ENV"
+                  fi
+            - name: Install JRE for Firebase emulators
+              run: |
+                  apt-get update
+                  apt-get install -y --no-install-recommends openjdk-17-jre-headless
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+            - run: npm install --no-audit --no-fund
+            - run: npm i -D -W serve
+            - run: npm run test:mobile
+            - name: Upload Playwright report (mobile)
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: mobile-playwright-report
+                  path: playwright-report
+                  if-no-files-found: ignore
+                  retention-days: 7
+
+    bump-patch:
+        name: Patch bump and tag
+        runs-on: ubuntu-22.04
+        needs: [pr-api-e2e, pr-web-e2e, pr-mobile-e2e]
+        if: success() && github.event.pull_request.head.repo.full_name == github.repository
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+            - name: Configure git
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            - name: Bump patch, commit and tag
+              run: |
+                  npm version patch -m "chore(release): v%s [skip ci]"
+            - name: Push changes and tags
+              env:
+                  BRANCH: ${{ github.event.pull_request.head.ref }}
+              run: |
+                  git push origin HEAD:$BRANCH --follow-tags
