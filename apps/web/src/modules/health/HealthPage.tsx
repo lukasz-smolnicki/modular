@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
+import { apiGet } from "@/api/client";
 
-type HealthPayload = { message?: string };
-
-const API_BASE =
-  import.meta.env.VITE_API_BASE_URL ??
-  import.meta.env.NEXT_PUBLIC_API_BASE_URL ??
-  "http://localhost:3000";
+function errorMessage(e: unknown) {
+  return e instanceof Error ? e.message : String(e);
+}
 
 export default function HealthPage() {
   const [apiMsg, setApiMsg] = useState("");
@@ -14,42 +12,41 @@ export default function HealthPage() {
 
   useEffect(() => {
     let on = true;
-
     (async () => {
       try {
-        const [apiRes, fsRes] = await Promise.all([
-          fetch(`${API_BASE}/health/api`),
-          fetch(`${API_BASE}/health/firestore`),
-        ]);
-
-        const [a, f]: [HealthPayload, HealthPayload] = await Promise.all([
-          apiRes.json(),
-          fsRes.json(),
-        ]);
-
-        if (!on) return;
-        setApiMsg(String(a?.message ?? ""));
-        setFsMsg(String(f?.message ?? ""));
-      } catch {
-        if (!on) return;
-        setErr("Błąd");
+        const h = await apiGet<{ message?: string }>("/health/api");
+        if (on) setApiMsg(h?.message ?? "OK");
+      } catch (e: unknown) {
+        if (on) setErr(errorMessage(e));
+      }
+      try {
+        const f = await apiGet<{ message?: string }>("/health/firestore");
+        if (on) setFsMsg(f?.message ?? "OK");
+      } catch (e: unknown) {
+        if (on) setErr((p) => p || errorMessage(e));
       }
     })();
-
     return () => {
       on = false;
     };
   }, []);
 
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", margin: 24 }}>
-      <h1 style={{ fontSize: 24, marginBottom: 16 }}>Health</h1>
+    <div
+      style={{
+        padding: 24,
+        maxWidth: 640,
+        margin: "0 auto",
+        fontFamily: "ui-sans-serif, system-ui",
+      }}
+    >
+      <h1 style={{ margin: 0, fontSize: 20 }}>Health</h1>
       <section
         style={{
+          marginTop: 16,
           padding: 12,
           border: "1px solid #e5e7eb",
           borderRadius: 8,
-          marginBottom: 12,
         }}
       >
         <h2 style={{ margin: 0, fontSize: 16 }}>API</h2>
@@ -59,6 +56,7 @@ export default function HealthPage() {
       </section>
       <section
         style={{
+          marginTop: 16,
           padding: 12,
           border: "1px solid #e5e7eb",
           borderRadius: 8,
