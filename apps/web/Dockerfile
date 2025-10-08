@@ -1,14 +1,22 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
+
+# deps
 COPY apps/web/package*.json ./
 RUN npm install --no-audit --no-fund
+
+# sources
 COPY apps/web/tsconfig.json ./tsconfig.json
 COPY apps/web/vite.config.ts ./vite.config.ts
 COPY apps/web/index.html ./index.html
 COPY apps/web/src ./src
-ARG API_URL
+COPY apps/web/public ./public
+
+# runtime API url (Vite czyta VITE_* w czasie build)
+ARG API_URL=""
 ENV VITE_API_BASE_URL=$API_URL
 ENV CI=1
+
 RUN npm run build
 
 FROM node:20-alpine AS runner
