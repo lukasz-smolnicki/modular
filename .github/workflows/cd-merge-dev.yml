@@ -182,3 +182,100 @@ jobs:
             IMAGE_NAME: web
         outputs:
             url: ${{ steps.weburl.outputs.url }}
+        steps:
+            - uses: actions/checkout@v4
+            - name: Auth
+              uses: google-github-actions/auth@v2
+              with:
+                  credentials_json: ${{ secrets.GCP_SA_KEY_JSON }}
+            - name: Setup gcloud
+              uses: google-github-actions/setup-gcloud@v2
+              with:
+                  project_id: ${{ env.GCP_PROJECT }}
+            - name: Docker auth
+              run: gcloud auth configure-docker ${{ env.AR_HOST }} --quiet
+            - name: Build image
+              run: |
+                  IMAGE_URI=${{ env.AR_HOST }}/${{ env.GCP_PROJECT }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+                  echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+                  docker build -f apps/web/Dockerfile --build-arg API_URL=${{ vars.API_DEV_URL }} -t "$IMAGE_URI" .
+            - name: Push image
+              run: docker push "$IMAGE_URI"
+            - name: Deploy to Cloud Run
+              run: |
+                  gcloud run deploy ${{ env.SERVICE_NAME }} \
+                    --project  ${{ env.GCP_PROJECT }} \
+                    --region   ${{ env.GCP_REGION }} \
+                    --image    "$IMAGE_URI" \
+                    --platform managed \
+                    --allow-unauthenticated \
+                    --quiet
+            - name: Read service URL
+              id: weburl
+              run: |
+                  URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --platform managed --region ${{ env.GCP_REGION }} --format='value(status.url)')
+                  echo "url=$URL" >> $GITHUB_OUTPUT
+                  echo "SERVICE_URL=$URL" >> $GITHUB_ENV
+            - name: Wait until ready
+              run: |
+                  for i in {1..60}; do
+                    if curl -fsS "$SERVICE_URL/health" >/dev/null; then
+                      exit 0
+                    fi
+                    sleep 2
+                  done
+                  exit 1
+
+    web-e2e:
+        needs: [deploy-api, deploy-web]
+        name: Web smoke (Playwright → deployed web)
+        runs-on: ubuntu-22.04
+        container: mcr.microsoft.com/playwright:v1.56.0-jammy
+        steps:
+            - uses: actions/checkout@v4
+            - run: echo "WEB_BASE_URL=${{ needs.deploy-web.outputs.url }}" >> $GITHUB_ENV
+            - name: Wait until /health is ready
+              run: |
+                  for i in {1..60}; do
+                    if curl -fsS "$WEB_BASE_URL/health" >/dev/null; then
+                      exit 0
+                    fi
+                    sleep 2
+                  done
+                  exit 1
+            - name: Prepare Playwright runner (no-save)
+              working-directory: apps/web
+              run: npm i -D --no-save @playwright/test@1.56.0
+            - env:
+                  WEB_BASE_URL: ${{ env.WEB_BASE_URL }}
+              run: |
+                  npx -y @playwright/test@1.56.0 test \
+                    -c apps/web/playwright.cloud.config.ts \
+                    --reporter=line
+
+    mobile-e2e:
+        needs: [deploy-api, deploy-mobile]
+        name: Mobile smoke (Playwright → deployed mobile web)
+        runs-on: ubuntu-22.04
+        container: mcr.microsoft.com/playwright:v1.56.0-jammy
+        steps:
+            - uses: actions/checkout@v4
+            - run: echo "WEB_BASE_URL=${{ needs.deploy-mobile.outputs.url }}" >> $GITHUB_ENV
+            - name: Wait until /health is ready
+              run: |
+                  for i in {1..60}; do
+                    if curl -fsS "$WEB_BASE_URL/health" >/dev/null; then
+                      exit 0
+                    fi
+                    sleep 2
+                  done
+                  exit 1
+            - name: Prepare Playwright runner (no-save)
+              working-directory: apps/mobile
+              run: npm i -D --no-save @playwright/test@1.56.0
+            - env:
+                  WEB_BASE_URL: ${{ env.WEB_BASE_URL }}
+              run: |
+                  npx -y @playwright/test@1.56.0 test \
+                    -c apps/mobile/playwright.cloud.config.ts \
+                    --reporter=line
