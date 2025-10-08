@@ -216,8 +216,7 @@ jobs:
         container: mcr.microsoft.com/playwright:v1.56.0-jammy
         steps:
             - uses: actions/checkout@v4
-            - name: Set WEB_BASE_URL
-              run: echo "WEB_BASE_URL=${{ needs.deploy-web.outputs.url }}" >> $GITHUB_ENV
+            - run: echo "WEB_BASE_URL=${{ needs.deploy-web.outputs.url }}" >> $GITHUB_ENV
             - name: Wait until /health is ready
               run: |
                   for i in {1..60}; do
@@ -227,8 +226,10 @@ jobs:
                     sleep 2
                   done
                   exit 1
-            - name: Run Playwright against deployed web
-              env:
+            - name: Prepare Playwright runner (no-save)
+              working-directory: apps/web
+              run: npm i -D --no-save @playwright/test@1.56.0
+            - env:
                   WEB_BASE_URL: ${{ env.WEB_BASE_URL }}
               run: |
                   npx -y @playwright/test@1.56.0 test \
