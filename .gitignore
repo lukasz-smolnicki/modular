@@ -1,30 +1,73 @@
-# ── Zależności / locki ─────────────────────────────────
+# Zależności / locki
 **/node_modules/
 **/package-lock.json
+**/pnpm-lock.yaml
+**/yarn.lock
+.pnpm-store/
+.npm/
 
-# ── Expo / RN ──────────────────────────────────────────
+# Artefakty narzędzi / cache
+.turbo/
+turbo/
+.cache/
+.tmp/
+.temp/
+.eslintcache
+*.tsbuildinfo
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Pliki środowiskowe (env)
+**/.env
+**/.env.*
+!.env.example
+!.env*.example
+
+# Expo / React Native
 **/.expo/
 **/.expo-shared/
+**/.expo/.react
+**/.expo/.cache
+apps/mobile/dist-web/
 
-# ── Build / artefakty ──────────────────────────────────
+# Next.js (web)
+**/.next/
+**/out/
+
+# Build / artefakty (ogólne)
 **/dist/
 **/build/
+coverage/
+reports/
 
-# ── Firebase Emulator ──────────────────────────────────
+# Firebase / Hosting / Emulator
 **/firebase-debug.log
 **/firestore-debug.log
 **/.emulator-data/
+.firebase/
+.firebase-cache/
+firebase-export-*.json
 
-# ── (opcjonalnie) Env ──────────────────────────────────
-**/.env
-**/.env.*
-
-# ── Playwright / E2E ───────────────────────────────────
+# Playwright / E2E
 **/playwright-report/
 **/blob-report/
 **/test-results/
-**/.last-run.json
-**/trace.zip
+**/test-results/.last-run.json
+**/test-results/**/*.png
+**/test-results/**/*.webm
+**/test-results/**/*.mp4
+**/test-results/**/trace.zip
+**/junit*.xml
 
-# ── Logi ogólne (opcjonalnie) ──────────────────────────
+# Logi / PID
 *.log
+*.pid
+*.pid.lock
+
+# Docker / lokalne (opcjonalnie)
+*.local
