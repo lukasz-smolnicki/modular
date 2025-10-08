@@ -3,6 +3,7 @@ import Constants from "expo-constants";
 type RuntimeConfig = {
   API_BASE_URL: string;
   ENV_NAME?: string;
+  FIREBASE_PROJECT_ID?: string;
   [key: string]: unknown;
 };
 

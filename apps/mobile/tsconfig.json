@@ -4,8 +4,10 @@
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] }
   },
-  "include": ["src/main.tsx", "src"],
+  "include": ["src", "src/main.tsx"],
   "extends": "expo/tsconfig.base"
 }

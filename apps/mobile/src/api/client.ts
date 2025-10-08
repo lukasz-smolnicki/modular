@@ -1,4 +1,4 @@
-import { getConfig } from "../runtime/config";
+import { getConfig } from "@/runtime/config";
 
 type GetInit = Omit<RequestInit, "body" | "method">;
 type PostInit = Omit<RequestInit, "body" | "method"> & {

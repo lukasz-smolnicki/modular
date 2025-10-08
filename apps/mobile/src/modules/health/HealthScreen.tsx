@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { apiGet } from "../../api/client";
+import { apiGet } from "@/api/client";
 
 function errorMessage(e: unknown) {
   return e instanceof Error ? e.message : String(e);
