@@ -14,20 +14,41 @@ export default function HealthPage() {
 
   useEffect(() => {
     let on = true;
+
+    const apiUrl = `${API_BASE}/health/api`;
+    const fsUrl = `${API_BASE}/health/firestore`;
+    console.log("HealthPage fetch", {
+      API_BASE,
+      apiUrl,
+      fsUrl,
+      location: typeof window !== "undefined" ? window.location.href : "",
+    });
+
     (async () => {
       try {
+        const [apiRes, fsRes] = await Promise.all([
+          fetch(apiUrl),
+          fetch(fsUrl),
+        ]);
+        console.log("HealthPage responses", {
+          apiStatus: apiRes.status,
+          fsStatus: fsRes.status,
+        });
+
         const [a, f]: [HealthPayload, HealthPayload] = await Promise.all([
-          fetch(`${API_BASE}/health/api`).then((r) => r.json()),
-          fetch(`${API_BASE}/health/firestore`).then((r) => r.json()),
+          apiRes.json(),
+          fsRes.json(),
         ]);
         if (!on) return;
         setApiMsg(String(a?.message ?? ""));
         setFsMsg(String(f?.message ?? ""));
-      } catch {
+      } catch (e) {
         if (!on) return;
+        console.error("HealthPage error", e);
         setErr("Błąd");
       }
     })();
+
     return () => {
       on = false;
     };
