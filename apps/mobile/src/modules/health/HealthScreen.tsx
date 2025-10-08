@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Platform } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
+import { apiGet } from "../../api/client";
 
-type HealthPayload = { message?: string };
-
-const API_BASE =
-  process.env.EXPO_PUBLIC_API_BASE_URL ??
-  process.env.NEXT_PUBLIC_API_BASE_URL ??
-  "http://localhost:3000";
+function errorMessage(e: unknown) {
+  return e instanceof Error ? e.message : String(e);
+}
 
 export default function HealthScreen() {
   const [apiMsg, setApiMsg] = useState("");
@@ -17,16 +15,16 @@ export default function HealthScreen() {
     let on = true;
     (async () => {
       try {
-        const [a, f]: [HealthPayload, HealthPayload] = await Promise.all([
-          fetch(`${API_BASE}/health/api`).then((r) => r.json()),
-          fetch(`${API_BASE}/health/firestore`).then((r) => r.json()),
-        ]);
-        if (!on) return;
-        setApiMsg(String(a?.message ?? ""));
-        setFsMsg(String(f?.message ?? ""));
-      } catch {
-        if (!on) return;
-        setErr("Błąd");
+        const h = await apiGet<{ message?: string }>("/health/api");
+        if (on) setApiMsg(h?.message ?? "OK");
+      } catch (e: unknown) {
+        if (on) setErr(errorMessage(e));
+      }
+      try {
+        const f = await apiGet<{ message?: string }>("/health/firestore");
+        if (on) setFsMsg(f?.message ?? "OK");
+      } catch (e: unknown) {
+        if (on) setErr((p) => p || errorMessage(e));
       }
     })();
     return () => {
@@ -35,33 +33,32 @@ export default function HealthScreen() {
   }, []);
 
   return (
-    <ScrollView contentContainerStyle={s.wrap}>
+    <View style={s.wrap}>
       <Text style={s.h1}>Health</Text>
       <View style={s.card}>
         <Text style={s.h2}>API</Text>
-        <Text style={s.msg}>{apiMsg}</Text>
+        <Text style={s.p}>{apiMsg}</Text>
       </View>
       <View style={s.card}>
         <Text style={s.h2}>Firestore</Text>
-        <Text style={s.msg}>{fsMsg}</Text>
+        <Text style={s.p}>{fsMsg}</Text>
       </View>
       {!!err && <Text style={s.err}>{err}</Text>}
-      <Text style={s.meta}>platform: {Platform.OS}</Text>
-    </ScrollView>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  wrap: { padding: 24, gap: 12 },
-  h1: { fontSize: 24, fontWeight: "600" },
-  h2: { fontSize: 16, fontWeight: "500" },
+  wrap: { padding: 24 },
+  h1: { fontSize: 20, fontWeight: "600" },
+  h2: { fontSize: 16, fontWeight: "600" },
+  p: { marginTop: 6 },
   card: {
+    marginTop: 16,
     padding: 12,
     borderWidth: 1,
     borderColor: "#e5e7eb",
     borderRadius: 8,
   },
-  msg: { marginTop: 8, fontWeight: "700" },
   err: { marginTop: 16, color: "#b91c1c" },
-  meta: { marginTop: 12, color: "#6b7280" },
 });
