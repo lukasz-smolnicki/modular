@@ -26,7 +26,11 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
-            - run: npm install --no-audit --no-fund
+                  cache: npm
+                  cache-dependency-path: |
+                      package-lock.json
+                      apps/**/package-lock.json
+            - run: npm ci --no-audit --no-fund
             - run: npm run lint
 
     pr-api-e2e:
@@ -43,7 +47,11 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
-            - run: npm install --no-audit --no-fund
+                  cache: npm
+                  cache-dependency-path: |
+                      package-lock.json
+                      apps/**/package-lock.json
+            - run: npm ci --no-audit --no-fund
             - run: npm run test:api
 
     pr-web-e2e:
@@ -53,43 +61,22 @@ jobs:
         container: mcr.microsoft.com/playwright:v1.56.0-jammy
         steps:
             - uses: actions/checkout@v4
-
-            - name: Load .env.local (optional)
-              run: |
-                  if [ -f .env.local ]; then
-                    grep -v '^\s*#' .env.local | grep -v '^\s*$' >> "$GITHUB_ENV"
-                  fi
-
             - name: Install JRE for Firebase emulators
               run: |
                   apt-get update
                   apt-get install -y --no-install-recommends openjdk-17-jre-headless
-
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
-
-            - run: npm install --no-audit --no-fund
-
-            - name: Install wait-on
-              run: npx -y wait-on@7 --version
-
-            - name: Start Firestore emulator
-              run: npm run dev:firestore &
-
-            - name: Start API
-              env:
-                  FIREBASE_EMULATORS_HOST: 127.0.0.1
-              run: npm run dev:api &
-
-            - name: Wait for API health
-              run: npx -y wait-on@7 http://localhost:3000/health/api
-
-            - name: Run Web e2e (with API URL)
+                  cache: npm
+                  cache-dependency-path: |
+                      package-lock.json
+                      apps/**/package-lock.json
+            - run: npm ci --no-audit --no-fund
+            - name: Run Web e2e (Playwright webServer)
               env:
                   VITE_API_BASE_URL: http://localhost:3000
               run: npm run test:web
-
             - name: Upload Playwright report (web)
               if: always()
               uses: actions/upload-artifact@v4
@@ -106,45 +93,22 @@ jobs:
         container: mcr.microsoft.com/playwright:v1.56.0-jammy
         steps:
             - uses: actions/checkout@v4
-
-            - name: Load .env.local (optional)
-              run: |
-                  if [ -f .env.local ]; then
-                    grep -v '^\s*#' .env.local | grep -v '^\s*$' >> "$GITHUB_ENV"
-                  fi
-
             - name: Install JRE for Firebase emulators
               run: |
                   apt-get update
                   apt-get install -y --no-install-recommends openjdk-17-jre-headless
-
             - uses: actions/setup-node@v4
               with:
                   node-version: 20
-
-            - run: npm install --no-audit --no-fund
-
-            - name: Install wait-on
-              run: npx -y wait-on@7 --version
-
-            - name: Start Firestore emulator
-              run: npm run dev:firestore &
-
-            - name: Start API
-              env:
-                  FIREBASE_EMULATORS_HOST: 127.0.0.1
-              run: npm run dev:api &
-
-            - name: Wait for API health
-              run: npx -y wait-on@7 http://localhost:3000/health/api
-
-            - name: Run Mobile e2e (with API URL)
+                  cache: npm
+                  cache-dependency-path: |
+                      package-lock.json
+                      apps/**/package-lock.json
+            - run: npm ci --no-audit --no-fund
+            - name: Run Mobile e2e (Playwright webServer)
               env:
                   EXPO_PUBLIC_API_BASE_URL: http://localhost:3000
-              run: |
-                  npm i -D -W serve
-                  npm run test:mobile
-
+              run: npm run test:mobile
             - name: Upload Playwright report (mobile)
               if: always()
               uses: actions/upload-artifact@v4
