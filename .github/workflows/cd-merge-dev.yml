@@ -1,4 +1,4 @@
-name: cd-merge-dev
+name: CD PR → dev (deploy + smoke)
 
 on:
     pull_request:
