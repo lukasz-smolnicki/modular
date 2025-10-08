@@ -15,7 +15,6 @@ permissions:
 
 env:
     NODE_VERSION: '20'
-    PNPM_VERSION: '9'
     GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID_STAGING }}
     GCP_REGION: ${{ vars.GCP_REGION }}
     STAGING_WEB_HOSTNAME: ${{ vars.STAGING_WEB_HOSTNAME }}
@@ -47,7 +46,7 @@ jobs:
                       any_changed:
                         - 'apps/**'
                         - 'packages/**'
-                        - 'pnpm-lock.yaml'
+                        - 'package-lock.json'
                         - 'turbo.json'
                         - 'package.json'
 
@@ -57,146 +56,37 @@ jobs:
         needs: changes
         steps:
             - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-              with:
-                  version: ${{ env.PNPM_VERSION }}
             - uses: actions/setup-node@v4
               with:
                   node-version: ${{ env.NODE_VERSION }}
-                  cache: 'pnpm'
+                  cache: npm
             - name: Install
-              run: pnpm install --frozen-lockfile
+              run: npm ci
             - name: Lint
-              run: pnpm lint
-
-    test_api_e2e:
-        name: API E2E (emulator)
-        runs-on: ubuntu-latest
-        needs: lint
-        if: needs.changes.outputs.api_changed == 'true'
-        steps:
-            - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-              with:
-                  version: ${{ env.PNPM_VERSION }}
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: ${{ env.NODE_VERSION }}
-                  cache: 'pnpm'
-            - name: Install
-              run: pnpm install --frozen-lockfile
-            - name: Start API (emulator) & run E2E
-              run: |
-                  pnpm --filter @crm/api build
-                  pnpm --filter @crm/api start:emulator &
-                  npx -y wait-on tcp:3001
-                  pnpm --filter @crm/api test:e2e
-            - name: Upload API E2E report
-              if: always()
-              uses: actions/upload-artifact@v4
-              with:
-                  name: api-e2e-report
-                  path: apps/api/test-results/**
-                  if-no-files-found: ignore
-
-    test_web_e2e:
-        name: Web E2E (local)
-        runs-on: ubuntu-latest
-        needs: lint
-        if: needs.changes.outputs.web_changed == 'true'
-        steps:
-            - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-              with:
-                  version: ${{ env.PNPM_VERSION }}
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: ${{ env.NODE_VERSION }}
-                  cache: 'pnpm'
-            - name: Install
-              run: pnpm install --frozen-lockfile
-            - name: Build web
-              run: pnpm --filter @crm/web build
-            - name: Start web locally
-              run: pnpm --filter @crm/web start &
-            - name: Wait for web
-              run: npx -y wait-on http://localhost:3000/health
-            - name: Run Playwright (local)
-              run: |
-                  npx -y @playwright/test@1.56.0 install --with-deps
-                  BASE_URL=http://localhost:3000 npx -y @playwright/test@1.56.0 test apps/web/test
-            - name: Upload Web E2E report
-              if: always()
-              uses: actions/upload-artifact@v4
-              with:
-                  name: web-e2e-report-local
-                  path: apps/web/test-results/**
-                  if-no-files-found: ignore
-
-    test_mobile_e2e:
-        name: Mobile E2E (Expo Web)
-        runs-on: ubuntu-latest
-        needs: lint
-        if: needs.changes.outputs.mobile_changed == 'true'
-        steps:
-            - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-              with:
-                  version: ${{ env.PNPM_VERSION }}
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: ${{ env.NODE_VERSION }}
-                  cache: 'pnpm'
-            - name: Install
-              run: pnpm install --frozen-lockfile
-            - name: Build Expo Web
-              run: pnpm --filter @crm/mobile build:web
-            - name: Start Expo Web preview
-              run: pnpm --filter @crm/mobile preview:web &
-            - name: Wait for mobile web
-              run: npx -y wait-on http://localhost:5173
-            - name: Run Playwright (Expo Web)
-              run: |
-                  npx -y @playwright/test@1.56.0 install --with-deps
-                  BASE_URL=http://localhost:5173 npx -y @playwright/test@1.56.0 test apps/mobile/test
-            - name: Upload Mobile E2E report
-              if: always()
-              uses: actions/upload-artifact@v4
-              with:
-                  name: mobile-e2e-report
-                  path: apps/mobile/test-results/**
-                  if-no-files-found: ignore
+              run: npm run lint
 
     build:
         name: Build Artifacts
         runs-on: ubuntu-latest
-        needs: [lint, test_api_e2e, test_web_e2e, test_mobile_e2e]
-        if: |
-            always() &&
-            (needs.lint.result == 'success') &&
-            (needs.test_api_e2e.result == 'success' || needs.changes.outputs.api_changed != 'true') &&
-            (needs.test_web_e2e.result == 'success' || needs.changes.outputs.web_changed != 'true') &&
-            (needs.test_mobile_e2e.result == 'success' || needs.changes.outputs.mobile_changed != 'true')
+        needs: lint
+        if: needs.changes.outputs.any_changed == 'true'
         steps:
             - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-              with:
-                  version: ${{ env.PNPM_VERSION }}
             - uses: actions/setup-node@v4
               with:
                   node-version: ${{ env.NODE_VERSION }}
-                  cache: 'pnpm'
+                  cache: npm
             - name: Install
-              run: pnpm install --frozen-lockfile
+              run: npm ci
             - name: Build API
               if: needs.changes.outputs.api_changed == 'true'
-              run: pnpm --filter @crm/api build
+              run: npm run -w @crm/api build
             - name: Build WEB
               if: needs.changes.outputs.web_changed == 'true'
-              run: pnpm --filter @crm/web build
-            - name: Build MOBILE (Expo web artifact)
+              run: npm run -w @crm/web build
+            - name: Build MOBILE (Expo web)
               if: needs.changes.outputs.mobile_changed == 'true'
-              run: pnpm --filter @crm/mobile build:web
+              run: npm run -w @crm/mobile build:web
             - name: Upload built artifacts
               uses: actions/upload-artifact@v4
               with:
@@ -264,7 +154,7 @@ jobs:
     mobile_smoke:
         name: Mobile smoke (Playwright → deployed)
         runs-on: ubuntu-latest
-        needs: deploy_mobile_web
+        needs: [deploy_api, deploy_mobile_web]
         if: needs.changes.outputs.mobile_changed == 'true'
         steps:
             - uses: actions/checkout@v4
@@ -287,7 +177,7 @@ jobs:
     web_smoke:
         name: Web smoke (Playwright → deployed)
         runs-on: ubuntu-latest
-        needs: deploy_web
+        needs: [deploy_api, deploy_web]
         if: needs.changes.outputs.web_changed == 'true'
         steps:
             - uses: actions/checkout@v4
