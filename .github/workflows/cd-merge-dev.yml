@@ -24,14 +24,11 @@ permissions:
 
 env:
     NODE_VERSION: '20'
-    # GCP/AR – identycznie jak w działającym workflow
     GCP_PROJECT: ${{ vars.GCP_PROJECT }}
     GCP_REGION: ${{ vars.GCP_REGION }}
     AR_HOST: ${{ vars.AR_HOST }}
     AR_REPO: ${{ vars.AR_REPO }}
     IMAGE_TAG: ${{ github.sha }}
-
-    # Dodatkowe zmienne używane przy deployu API (jak w działającym kodzie)
     FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
     FIRESTORE_DATABASE_ID: ${{ vars.FIRESTORE_DATABASE_ID }}
     JWT_SECRET: ${{ vars.JWT_SECRET }}
@@ -49,7 +46,6 @@ jobs:
             any_changed: ${{ steps.flags.outputs.any_changed }}
         steps:
             - uses: actions/checkout@v4
-
             - id: filter
               uses: tj-actions/changed-files@v45
               with:
@@ -71,7 +67,6 @@ jobs:
                         - 'package.json'
                         - 'package-lock.json'
                         - 'turbo.json'
-
             - id: flags
               shell: bash
               env:
@@ -88,11 +83,9 @@ jobs:
                     local v="$(echo "${1:-}" | tr '[:upper:]' '[:lower:]' | xargs)"
                     [[ "$v" == "true" || "$v" == "1" || "$v" == "yes" || "$v" == "on" ]]
                   }
-
                   web="$F_WEB"; api="$F_API"; mobile="$F_MOBILE"; any="$F_ANY"
                   force_input="$(echo "${FORCE:-}" | tr '[:upper:]' '[:lower:]' | xargs)"
                   comps_input="$(echo "${COMPONENTS:-}" | tr '[:upper:]' '[:lower:]')"
-
                   if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
                     if norm_bool "$force_input"; then
                       web=true; api=true; mobile=true; any=true
@@ -109,7 +102,6 @@ jobs:
                       any=true
                     fi
                   fi
-
                   echo "web=$web" >> "$GITHUB_OUTPUT"
                   echo "api=$api" >> "$GITHUB_OUTPUT"
                   echo "mobile=$mobile" >> "$GITHUB_OUTPUT"
@@ -145,20 +137,15 @@ jobs:
                   node-version: ${{ env.NODE_VERSION }}
             - name: Install
               run: npm install --no-audit --no-fund
-
-            # === identycznie jak w działającym kodzie – musi się zbudować zanim deploy poleci ===
             - name: Build WEB
               if: needs.changes.outputs.web == 'true'
               run: npm run -w web build
-
             - name: Build MOBILE (Expo web)
               if: needs.changes.outputs.mobile == 'true'
               run: npm run -w mobile build:web
-
             - name: Build API (Nest compile)
               if: needs.changes.outputs.api == 'true'
               run: npm run -w api build
-
             - name: Upload built artifacts
               uses: actions/upload-artifact@v4
               with:
@@ -271,7 +258,7 @@ jobs:
               run: |
                   IMAGE_URI=${{ env.AR_HOST }}/${{ env.GCP_PROJECT }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
                   echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-                  docker build -f apps/mobile/Dockerfile --build-arg API_URL=${{ needs.deploy-api.outputs.url || env.WEB_DEV_URL }} -t "$IMAGE_URI" .
+                  docker build -f apps/mobile/Dockerfile --build-arg API_URL=${{ vars.API_DEV_URL }} -t "$IMAGE_URI" .
             - name: Push image
               run: docker push "$IMAGE_URI"
             - name: Deploy to Cloud Run
@@ -327,7 +314,7 @@ jobs:
               run: |
                   IMAGE_URI=${{ env.AR_HOST }}/${{ env.GCP_PROJECT }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
                   echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-                  docker build -f apps/web/Dockerfile --build-arg API_URL=${{ needs.deploy-api.outputs.url || env.WEB_DEV_URL }} -t "$IMAGE_URI" .
+                  docker build -f apps/web/Dockerfile --build-arg API_URL=${{ vars.API_DEV_URL }} -t "$IMAGE_URI" .
             - name: Push image
               run: docker push "$IMAGE_URI"
             - name: Deploy to Cloud Run
@@ -408,3 +395,47 @@ jobs:
                   npx -y @playwright/test@1.56.0 test \
                     -c apps/mobile/playwright.cloud.config.ts \
                     --reporter=line
+
+    rollback_on_failure:
+        name: Rollback (on smoke failure)
+        runs-on: ubuntu-22.04
+        needs: [api-smoke, mobile-e2e, web-e2e]
+        if: |
+            needs.api-smoke.result == 'failure' ||
+            needs.mobile-e2e.result == 'failure' ||
+            needs.web-e2e.result == 'failure'
+        steps:
+            - uses: google-github-actions/auth@v2
+              with:
+                  credentials_json: ${{ secrets.GCP_SA_KEY_JSON }}
+            - uses: google-github-actions/setup-gcloud@v2
+              with:
+                  project_id: ${{ env.GCP_PROJECT }}
+            - name: Rollback API
+              if: needs.changes.outputs.api == 'true'
+              run: |
+                  SERVICE="api-dev"
+                  REGION="${{ env.GCP_REGION }}"
+                  PREV_REV=$(gcloud run services describe $SERVICE --region $REGION --format='value(status.traffic[1].revisionName)')
+                  if [ -n "$PREV_REV" ]; then
+                    gcloud run services update-traffic $SERVICE --region $REGION --to-revisions $PREV_REV=100
+                  fi
+            - name: Rollback Web
+              if: needs.changes.outputs.web == 'true'
+              run: |
+                  SERVICE="web-dev"
+                  REGION="${{ env.GCP_REGION }}"
+                  PREV_REV=$(gcloud run services describe $SERVICE --region $REGION --format='value(status.traffic[1].revisionName)')
+                  if [ -n "$PREV_REV" ]; then
+                    gcloud run services update-traffic $SERVICE --region $REGION --to-revisions $PREV_REV=100
+                  fi
+            - name: Rollback Mobile
+              if: needs.changes.outputs.mobile == 'true'
+              run: |
+                  SERVICE="mobile-web-dev"
+                  REGION="${{ env.GCP_REGION }}"
+                  PREV_REV=$(gcloud run services describe $SERVICE --region $REGION --format='value(status.traffic[1].revisionName)')
+                  if [ -n "$PREV_REV" ]; then
+                    gcloud run services update-traffic $SERVICE --region $REGION --to-revisions $PREV_REV=100
+                  fi
+            - run: exit 1
