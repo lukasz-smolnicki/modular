@@ -1,274 +1,278 @@
 name: cd-merge-dev
 
 on:
-  pull_request:
-    branches: [dev]
-    types: [opened, synchronize, reopened]
-  workflow_dispatch:
-    inputs:
-      force:
-        description: Force full pipeline (ignore changed paths)
-        type: boolean
-        default: false
-      components:
-        description: Optional: comma-separated list (api,web,mobile)
-        required: false
-        default: ''
+    pull_request:
+        branches:
+            - dev
+        types:
+            - opened
+            - synchronize
+            - reopened
+    workflow_dispatch:
+        inputs:
+            force:
+                description: 'Force full pipeline (ignore changed paths)'
+                required: false
+                default: 'false'
+            components:
+                description: 'Optional: comma-separated list (api,web,mobile)'
+                required: false
+                default: ''
 
 concurrency:
-  group: cd-merge-dev-${{ github.ref }}
-  cancel-in-progress: true
+    group: cd-merge-dev-${{ github.ref }}
+    cancel-in-progress: true
 
 permissions:
-  contents: read
-  id-token: write
-  deployments: write
+    contents: read
+    id-token: write
+    deployments: write
 
 env:
-  NODE_VERSION: '20'
-  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID_STAGING }}
-  GCP_REGION: ${{ vars.GCP_REGION }}
-  STAGING_WEB_HOSTNAME: ${{ vars.STAGING_WEB_HOSTNAME }}
-  STAGING_MOBILE_HOSTNAME: ${{ vars.STAGING_MOBILE_HOSTNAME }}
-  STAGING_API_URL: ${{ vars.STAGING_API_URL }}
+    NODE_VERSION: '20'
+    GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID_STAGING }}
+    GCP_REGION: ${{ vars.GCP_REGION }}
+    STAGING_WEB_HOSTNAME: ${{ vars.STAGING_WEB_HOSTNAME }}
+    STAGING_MOBILE_HOSTNAME: ${{ vars.STAGING_MOBILE_HOSTNAME }}
+    STAGING_API_URL: ${{ vars.STAGING_API_URL }}
 
 jobs:
-  changes:
-    name: Detect changed paths / Force (dispatch)
-    runs-on: ubuntu-latest
-    outputs:
-      web_changed: ${{ steps.flags.outputs.web }}
-      api_changed: ${{ steps.flags.outputs.api }}
-      mobile_changed: ${{ steps.flags.outputs.mobile }}
-      any_changed: ${{ steps.flags.outputs.any_changed }}
-    steps:
-      - uses: actions/checkout@v4
+    changes:
+        name: Detect changed paths / Force (dispatch)
+        runs-on: ubuntu-latest
+        outputs:
+            web_changed: ${{ steps.flags.outputs.web }}
+            api_changed: ${{ steps.flags.outputs.api }}
+            mobile_changed: ${{ steps.flags.outputs.mobile }}
+            any_changed: ${{ steps.flags.outputs.any_changed }}
+        steps:
+            - uses: actions/checkout@v4
 
-      - id: filter
-        uses: tj-actions/changed-files@v45
-        with:
-          separator: ','
-          files_yaml: |
-            web:
-              - 'apps/web/**'
-            api:
-              - 'apps/api/**'
-            mobile:
-              - 'apps/mobile/**'
-            any_changed:
-              - 'apps/**'
-              - 'packages/**'
-              - '.github/**'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'turbo.json'
+            - id: filter
+              uses: tj-actions/changed-files@v45
+              with:
+                  separator: ','
+                  files_yaml: |
+                      web:
+                        - 'apps/web/**'
+                      api:
+                        - 'apps/api/**'
+                      mobile:
+                        - 'apps/mobile/**'
+                      any_changed:
+                        - 'apps/**'
+                        - 'packages/**'
+                        - '.github/**'
+                        - 'package.json'
+                        - 'package-lock.json'
+                        - 'turbo.json'
 
-      - id: flags
-        shell: bash
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          FORCE: ${{ inputs.force }}
-          COMPONENTS: ${{ inputs.components }}
-          F_WEB: ${{ steps.filter.outputs.web }}
-          F_API: ${{ steps.filter.outputs.api }}
-          F_MOBILE: ${{ steps.filter.outputs.mobile }}
-          F_ANY: ${{ steps.filter.outputs.any_changed }}
-        run: |
-          set -euo pipefail
-          web="$F_WEB"; api="$F_API"; mobile="$F_MOBILE"; any="$F_ANY"
+            - id: flags
+              shell: bash
+              env:
+                  EVENT_NAME: ${{ github.event_name }}
+                  FORCE: ${{ inputs.force }}
+                  COMPONENTS: ${{ inputs.components }}
+                  F_WEB: ${{ steps.filter.outputs.web }}
+                  F_API: ${{ steps.filter.outputs.api }}
+                  F_MOBILE: ${{ steps.filter.outputs.mobile }}
+                  F_ANY: ${{ steps.filter.outputs.any_changed }}
+              run: |
+                  set -euo pipefail
+                  web="$F_WEB"; api="$F_API"; mobile="$F_MOBILE"; any="$F_ANY"
 
-          if [[ "$EVENT_NAME" == "workflow_dispatch" && "${FORCE:-false}" == "true" ]]; then
-            web=true; api=true; mobile=true; any=true
-            if [[ -n "${COMPONENTS:-}" ]]; then
-              web=false; api=false; mobile=false
-              IFS=',' read -ra parts <<< "$COMPONENTS"
-              for c in "${parts[@]}"; do
-                c_trim="$(echo "$c" | tr '[:upper:]' '[:lower:]' | xargs)"
-                [[ "$c_trim" == "web" ]] && web=true
-                [[ "$c_trim" == "api" ]] && api=true
-                [[ "$c_trim" == "mobile" ]] && mobile=true
-              done
-              any=true
-            fi
-          fi
+                  if [[ "$EVENT_NAME" == "workflow_dispatch" && "${FORCE:-false}" == "true" ]]; then
+                    web=true; api=true; mobile=true; any=true
+                    if [[ -n "${COMPONENTS:-}" ]]; then
+                      web=false; api=false; mobile=false
+                      IFS=',' read -ra parts <<< "$COMPONENTS"
+                      for c in "${parts[@]}"; do
+                        c_trim="$(echo "$c" | tr '[:upper:]' '[:lower:]' | xargs)"
+                        [[ "$c_trim" == "web" ]] && web=true
+                        [[ "$c_trim" == "api" ]] && api=true
+                        [[ "$c_trim" == "mobile" ]] && mobile=true
+                      done
+                      any=true
+                    fi
+                  fi
 
-          echo "web=$web" >> "$GITHUB_OUTPUT"
-          echo "api=$api" >> "$GITHUB_OUTPUT"
-          echo "mobile=$mobile" >> "$GITHUB_OUTPUT"
-          echo "any_changed=$any" >> "$GITHUB_OUTPUT"
+                  echo "web=$web" >> "$GITHUB_OUTPUT"
+                  echo "api=$api" >> "$GITHUB_OUTPUT"
+                  echo "mobile=$mobile" >> "$GITHUB_OUTPUT"
+                  echo "any_changed=$any" >> "$GITHUB_OUTPUT"
 
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    needs: changes
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - name: Install
-        run: npm install --no-audit --no-fund
-      - name: Lint
-        run: npm run lint
+    lint:
+        name: Lint
+        runs-on: ubuntu-latest
+        needs: changes
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+            - name: Install
+              run: npm install --no-audit --no-fund
+            - name: Lint
+              run: npm run lint
 
-  build:
-    name: Build Artifacts
-    runs-on: ubuntu-latest
-    needs: lint
-    if: |
-      needs.changes.outputs.web_changed == 'true' ||
-      needs.changes.outputs.mobile_changed == 'true' ||
-      needs.changes.outputs.api_changed == 'true' ||
-      needs.changes.outputs.any_changed == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - name: Install
-        run: npm install --no-audit --no-fund
-      - name: Build WEB
-        if: needs.changes.outputs.web_changed == 'true'
-        run: npm run -w web build
-      - name: Build MOBILE (Expo web)
-        if: needs.changes.outputs.mobile_changed == 'true'
-        run: npm run -w mobile build:web
-      - name: Upload built artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifacts
-          path: |
-            apps/web/dist/**
-            apps/mobile/dist/**
-          if-no-files-found: ignore
+    build:
+        name: Build Artifacts
+        runs-on: ubuntu-latest
+        needs: lint
+        if: |
+            needs.changes.outputs.web_changed == 'true' ||
+            needs.changes.outputs.mobile_changed == 'true' ||
+            needs.changes.outputs.api_changed == 'true' ||
+            needs.changes.outputs.any_changed == 'true'
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+            - name: Install
+              run: npm install --no-audit --no-fund
+            - name: Build WEB
+              if: needs.changes.outputs.web_changed == 'true'
+              run: npm run -w web build
+            - name: Build MOBILE (Expo web)
+              if: needs.changes.outputs.mobile_changed == 'true'
+              run: npm run -w mobile build:web
+            - name: Upload built artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: build-artifacts
+                  path: |
+                      apps/web/dist/**
+                      apps/mobile/dist/**
+                  if-no-files-found: ignore
 
-  deploy_api:
-    name: Deploy API (nest)
-    runs-on: ubuntu-latest
-    needs: build
-    if: needs.changes.outputs.api_changed == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-      - uses: google-github-actions/setup-gcloud@v2
-      - name: Build & push API image
-        run: gcloud builds submit apps/api --tag "gcr.io/${GCP_PROJECT_ID}/api:${{ github.sha }}"
-      - name: Deploy to Cloud Run
-        run: |
-          gcloud run deploy api-staging \
-            --project ${GCP_PROJECT_ID} \
-            --region ${GCP_REGION} \
-            --image gcr.io/${GCP_PROJECT_ID}/api:${{ github.sha }} \
-            --platform managed \
-            --allow-unauthenticated \
-            --set-env-vars NODE_ENV=staging
-
-  deploy_mobile_web:
-    name: Deploy Mobile (expo:web)
-    runs-on: ubuntu-latest
-    needs: build
-    if: needs.changes.outputs.mobile_changed == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - run: npm i -g firebase-tools
-      - name: Deploy Mobile to Hosting
-        run: firebase deploy --only hosting:mobile-staging --project ${{ vars.FIREBASE_PROJECT_ID_STAGING }}
-
-  deploy_web:
-    name: Deploy Web (next)
-    runs-on: ubuntu-latest
-    needs: build
-    if: needs.changes.outputs.web_changed == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - run: npm i -g firebase-tools
-      - name: Deploy Web to Hosting
-        run: firebase deploy --only hosting:staging --project ${{ vars.FIREBASE_PROJECT_ID_STAGING }}
-
-  api_smoke:
-    name: API smoke (ping)
-    runs-on: ubuntu-latest
-    needs: deploy_api
-    if: needs.changes.outputs.api_changed == 'true'
-    steps:
-      - run: curl -sfL "${{ env.STAGING_API_URL }}/health"
-
-  mobile_smoke:
-    name: Mobile smoke (Playwright → deployed)
-    runs-on: ubuntu-latest
-    needs: [deploy_api, deploy_mobile_web]
-    if: needs.changes.outputs.mobile_changed == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - run: npx -y @playwright/test@1.56.0 install --with-deps
-      - env:
-          BASE_URL: https://${{ env.STAGING_MOBILE_HOSTNAME }}
-        run: |
-          echo "$BASE_URL"
-          npx -y @playwright/test@1.56.0 test apps/mobile/test/health
-      - if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: mobile-smoke-staging
-          path: apps/mobile/test-results/**
-          if-no-files-found: ignore
-
-  web_smoke:
-    name: Web smoke (Playwright → deployed)
-    runs-on: ubuntu-latest
-    needs: [deploy_api, deploy_web]
-    if: needs.changes.outputs.web_changed == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - run: npx -y @playwright/test@1.56.0 install --with-deps
-      - env:
-          BASE_URL: https://${{ env.STAGING_WEB_HOSTNAME }}
-        run: |
-          echo "$BASE_URL"
-          npx -y @playwright/test@1.56.0 test apps/web/test/health
-      - if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-smoke-staging
-          path: apps/web/test-results/**
-          if-no-files-found: ignore
-
-  rollback_on_failure:
-    name: Rollback (on smoke failure)
-    runs-on: ubuntu-latest
-    needs: [api_smoke, mobile_smoke, web_smoke]
-    if: |
-      needs.api_smoke.result == 'failure' ||
-      needs.mobile_smoke.result == 'failure' ||
-      needs.web_smoke.result == 'failure'
-    steps:
-      - uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-      - uses: google-github-actions/setup-gcloud@v2
-      - name: Rollback API
+    deploy_api:
+        name: Deploy API (nest)
+        runs-on: ubuntu-latest
+        needs: build
         if: needs.changes.outputs.api_changed == 'true'
-        run: |
-          SERVICE="api-staging"
-          REGION="${{ env.GCP_REGION }}"
-          PREV_REV=$(gcloud run services describe $SERVICE --region $REGION --format='value(status.traffic[1].revisionName)')
-          if [ -n "$PREV_REV" ]; then
-            gcloud run services update-traffic $SERVICE --region $REGION --to-revisions $PREV_REV=100
-          fi
-      - name: Rollback Web
-        if: needs.changes.outputs.web_changed == 'true'
-        run: firebase hosting:channel:deploy live --project ${{ vars.FIREBASE_PROJECT_ID_STAGING }} --only hosting:staging || true
-      - name: Rollback Mobile
+        steps:
+            - uses: actions/checkout@v4
+            - uses: google-github-actions/auth@v2
+              with:
+                  workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+                  service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+            - uses: google-github-actions/setup-gcloud@v2
+            - name: Build & push API image
+              run: gcloud builds submit apps/api --tag "gcr.io/${GCP_PROJECT_ID}/api:${{ github.sha }}"
+            - name: Deploy to Cloud Run
+              run: |
+                  gcloud run deploy api-staging \
+                    --project ${GCP_PROJECT_ID} \
+                    --region ${GCP_REGION} \
+                    --image gcr.io/${GCP_PROJECT_ID}/api:${{ github.sha }} \
+                    --platform managed \
+                    --allow-unauthenticated \
+                    --set-env-vars NODE_ENV=staging
+
+    deploy_mobile_web:
+        name: Deploy Mobile (expo:web)
+        runs-on: ubuntu-latest
+        needs: build
         if: needs.changes.outputs.mobile_changed == 'true'
-        run: firebase hosting:channel:deploy live --project ${{ vars.FIREBASE_PROJECT_ID_STAGING }} --only hosting:mobile-staging || true
-      - run: exit 1
+        steps:
+            - uses: actions/checkout@v4
+            - run: npm i -g firebase-tools
+            - name: Deploy Mobile to Hosting
+              run: firebase deploy --only hosting:mobile-staging --project ${{ vars.FIREBASE_PROJECT_ID_STAGING }}
+
+    deploy_web:
+        name: Deploy Web (next)
+        runs-on: ubuntu-latest
+        needs: build
+        if: needs.changes.outputs.web_changed == 'true'
+        steps:
+            - uses: actions/checkout@v4
+            - run: npm i -g firebase-tools
+            - name: Deploy Web to Hosting
+              run: firebase deploy --only hosting:staging --project ${{ vars.FIREBASE_PROJECT_ID_STAGING }}
+
+    api_smoke:
+        name: API smoke (ping)
+        runs-on: ubuntu-latest
+        needs: deploy_api
+        if: needs.changes.outputs.api_changed == 'true'
+        steps:
+            - run: curl -sfL "${{ env.STAGING_API_URL }}/health"
+
+    mobile_smoke:
+        name: Mobile smoke (Playwright → deployed)
+        runs-on: ubuntu-latest
+        needs: [deploy_api, deploy_mobile_web]
+        if: needs.changes.outputs.mobile_changed == 'true'
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+            - run: npx -y @playwright/test@1.56.0 install --with-deps
+            - env:
+                  BASE_URL: https://${{ env.STAGING_MOBILE_HOSTNAME }}
+              run: |
+                  echo "$BASE_URL"
+                  npx -y @playwright/test@1.56.0 test apps/mobile/test/health
+            - if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: mobile-smoke-staging
+                  path: apps/mobile/test-results/**
+                  if-no-files-found: ignore
+
+    web_smoke:
+        name: Web smoke (Playwright → deployed)
+        runs-on: ubuntu-latest
+        needs: [deploy_api, deploy_web]
+        if: needs.changes.outputs.web_changed == 'true'
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+            - run: npx -y @playwright/test@1.56.0 install --with-deps
+            - env:
+                  BASE_URL: https://${{ env.STAGING_WEB_HOSTNAME }}
+              run: |
+                  echo "$BASE_URL"
+                  npx -y @playwright/test@1.56.0 test apps/web/test/health
+            - if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: web-smoke-staging
+                  path: apps/web/test-results/**
+                  if-no-files-found: ignore
+
+    rollback_on_failure:
+        name: Rollback (on smoke failure)
+        runs-on: ubuntu-latest
+        needs: [api_smoke, mobile_smoke, web_smoke]
+        if: |
+            needs.api_smoke.result == 'failure' ||
+            needs.mobile_smoke.result == 'failure' ||
+            needs.web_smoke.result == 'failure'
+        steps:
+            - uses: google-github-actions/auth@v2
+              with:
+                  workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+                  service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+            - uses: google-github-actions/setup-gcloud@v2
+            - name: Rollback API
+              if: needs.changes.outputs.api_changed == 'true'
+              run: |
+                  SERVICE="api-staging"
+                  REGION="${{ env.GCP_REGION }}"
+                  PREV_REV=$(gcloud run services describe $SERVICE --region $REGION --format='value(status.traffic[1].revisionName)')
+                  if [ -n "$PREV_REV" ]; then
+                    gcloud run services update-traffic $SERVICE --region $REGION --to-revisions $PREV_REV=100
+                  fi
+            - name: Rollback Web
+              if: needs.changes.outputs.web_changed == 'true'
+              run: firebase hosting:channel:deploy live --project ${{ vars.FIREBASE_PROJECT_ID_STAGING }} --only hosting:staging || true
+            - name: Rollback Mobile
+              if: needs.changes.outputs.mobile_changed == 'true'
+              run: firebase hosting:channel:deploy live --project ${{ vars.FIREBASE_PROJECT_ID_STAGING }} --only hosting:mobile-staging || true
+            - run: exit 1
