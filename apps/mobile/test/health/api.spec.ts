@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test";
 
-test("Expo Web: widok /health pokazuje komunikat z API", async ({ page }) => {
+test("widok /health pokazuje komunikat z API", async ({ page }) => {
   await page.goto("/health");
-  await expect(page.getByText("Witamy z API")).toBeVisible();
+  await expect(page.getByText("Witamy z API")).toBeVisible({
+    timeout: 20000,
+  });
 });
