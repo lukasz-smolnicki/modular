@@ -27,9 +27,7 @@ jobs:
               with:
                   node-version: 20
                   cache: npm
-                  cache-dependency-path: |
-                      package-lock.json
-                      apps/**/package-lock.json
+                  cache-dependency-path: '**/package-lock.json'
             - run: npm ci --no-audit --no-fund
             - run: npm run lint
 
@@ -48,9 +46,7 @@ jobs:
               with:
                   node-version: 20
                   cache: npm
-                  cache-dependency-path: |
-                      package-lock.json
-                      apps/**/package-lock.json
+                  cache-dependency-path: '**/package-lock.json'
             - run: npm ci --no-audit --no-fund
             - run: npm run test:api
 
@@ -69,9 +65,7 @@ jobs:
               with:
                   node-version: 20
                   cache: npm
-                  cache-dependency-path: |
-                      package-lock.json
-                      apps/**/package-lock.json
+                  cache-dependency-path: '**/package-lock.json'
             - run: npm ci --no-audit --no-fund
             - name: Run Web e2e (Playwright webServer)
               env:
@@ -101,9 +95,7 @@ jobs:
               with:
                   node-version: 20
                   cache: npm
-                  cache-dependency-path: |
-                      package-lock.json
-                      apps/**/package-lock.json
+                  cache-dependency-path: '**/package-lock.json'
             - run: npm ci --no-audit --no-fund
             - name: Run Mobile e2e (Playwright webServer)
               env:
