@@ -1,75 +1,70 @@
-import { useEffect, useState } from "react";
-
-type HealthPayload = { message?: string };
-
-const API_BASE =
-  import.meta.env.VITE_API_BASE_URL ??
-  import.meta.env.NEXT_PUBLIC_API_BASE_URL ??
-  "http://localhost:3000";
+import { useEffect, useState } from 'react';
+import { apiGet } from '@/api/client';
 
 export default function HealthPage() {
-  const [apiMsg, setApiMsg] = useState("");
-  const [fsMsg, setFsMsg] = useState("");
-  const [err, setErr] = useState("");
+    const [apiMsg, setApiMsg] = useState('');
+    const [fsMsg, setFsMsg] = useState('');
+    const [err, setErr] = useState('');
 
-  useEffect(() => {
-    let on = true;
+    useEffect(() => {
+        let on = true;
+        (async () => {
+            try {
+                const h = await apiGet<{ message?: string }>('/health/api');
+                if (on) setApiMsg(h?.message ?? 'OK');
+            } catch (e: any) {
+                if (on) setErr(String(e?.message || e));
+            }
+            try {
+                const f = await apiGet<{ message?: string }>(
+                    '/health/firestore'
+                );
+                if (on) setFsMsg(f?.message ?? 'OK');
+            } catch (e: any) {
+                if (on) setErr((p) => p || String(e?.message || e));
+            }
+        })();
+        return () => {
+            on = false;
+        };
+    }, []);
 
-    (async () => {
-      try {
-        const [apiRes, fsRes] = await Promise.all([
-          fetch(`${API_BASE}/health/api`),
-          fetch(`${API_BASE}/health/firestore`),
-        ]);
-
-        const [a, f]: [HealthPayload, HealthPayload] = await Promise.all([
-          apiRes.json(),
-          fsRes.json(),
-        ]);
-
-        if (!on) return;
-        setApiMsg(String(a?.message ?? ""));
-        setFsMsg(String(f?.message ?? ""));
-      } catch {
-        if (!on) return;
-        setErr("Błąd");
-      }
-    })();
-
-    return () => {
-      on = false;
-    };
-  }, []);
-
-  return (
-    <div style={{ fontFamily: "system-ui, sans-serif", margin: 24 }}>
-      <h1 style={{ fontSize: 24, marginBottom: 16 }}>Health</h1>
-      <section
-        style={{
-          padding: 12,
-          border: "1px solid #e5e7eb",
-          borderRadius: 8,
-          marginBottom: 12,
-        }}
-      >
-        <h2 style={{ margin: 0, fontSize: 16 }}>API</h2>
-        <p style={{ margin: "8px 0" }}>
-          <strong>{apiMsg}</strong>
-        </p>
-      </section>
-      <section
-        style={{
-          padding: 12,
-          border: "1px solid #e5e7eb",
-          borderRadius: 8,
-        }}
-      >
-        <h2 style={{ margin: 0, fontSize: 16 }}>Firestore</h2>
-        <p style={{ margin: "8px 0" }}>
-          <strong>{fsMsg}</strong>
-        </p>
-      </section>
-      {err && <pre style={{ marginTop: 16, color: "#b91c1c" }}>{err}</pre>}
-    </div>
-  );
+    return (
+        <div
+            style={{
+                padding: 24,
+                maxWidth: 640,
+                margin: '0 auto',
+                fontFamily: 'ui-sans-serif, system-ui'
+            }}>
+            <h1 style={{ margin: 0, fontSize: 20 }}>Health</h1>
+            <section
+                style={{
+                    marginTop: 16,
+                    padding: 12,
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 8
+                }}>
+                <h2 style={{ margin: 0, fontSize: 16 }}>API</h2>
+                <p style={{ margin: '8px 0' }}>
+                    <strong>{apiMsg}</strong>
+                </p>
+            </section>
+            <section
+                style={{
+                    marginTop: 16,
+                    padding: 12,
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 8
+                }}>
+                <h2 style={{ margin: 0, fontSize: 16 }}>Firestore</h2>
+                <p style={{ margin: '8px 0' }}>
+                    <strong>{fsMsg}</strong>
+                </p>
+            </section>
+            {err && (
+                <pre style={{ marginTop: 16, color: '#b91c1c' }}>{err}</pre>
+            )}
+        </div>
+    );
 }
