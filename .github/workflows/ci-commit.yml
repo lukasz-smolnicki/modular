@@ -5,8 +5,11 @@ on:
         branches:
             - 'task/**'
             - 'feature/**'
+            - 'feat/**'
             - 'bugfix/**'
             - 'chore/**'
+            - 'hotfix/**'
+            - 'test/**'
 
 concurrency:
     group: feature-ci-${{ github.ref }}

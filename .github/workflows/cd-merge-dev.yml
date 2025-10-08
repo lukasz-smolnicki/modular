@@ -50,6 +50,8 @@ jobs:
         env:
             SERVICE_NAME: api-dev
             IMAGE_NAME: api
+        outputs:
+            url: ${{ steps.apiurl.outputs.url }}
         steps:
             - uses: actions/checkout@v4
             - name: Auth
@@ -73,15 +75,44 @@ jobs:
             - name: Deploy to Cloud Run
               run: |
                   gcloud run deploy ${{ env.SERVICE_NAME }} \
-                    --project ${{ env.GCP_PROJECT }} \
-                    --region ${{ env.GCP_REGION }} \
-                    --image "$IMAGE_URI" \
+                    --project  ${{ env.GCP_PROJECT }} \
+                    --region   ${{ env.GCP_REGION }} \
+                    --image    "$IMAGE_URI" \
                     --platform managed \
                     --allow-unauthenticated \
-                    --set-env-vars "API_PORT=8080,JWT_SECRET=${{ vars.JWT_SECRET }},FIREBASE_PROJECT_ID=${{ vars.FIREBASE_PROJECT_ID }},FIRESTORE_DATABASE_ID=${{ vars.FIRESTORE_DATABASE_ID }},WEB_ORIGIN=${{ vars.WEB_DEV_URL }},EXPO_WEB_ORIGIN=${{ vars.MOBILE_WEB_DEV_URL }}" \
+                    --set-env-vars "API_PORT=8080,JWT_SECRET=${{ vars.JWT_SECRET }},FIREBASE_PROJECT_ID=${{ vars.FIREBASE_PROJECT_ID }},FIRESTORE_DATABASE_ID=${{ vars.FIRESTORE_DATABASE_ID }},WEB_ORIGIN=${{ vars.WEB_DEV_URL }},EXPO_WEB_ORIGIN=${{ vars.MOBILE_WEB_DEV_URL }},WEB_ORIGIN_REGEX=^https://web-dev-[a-z0-9-]+\\.a\\.run\\.app$,EXPO_WEB_ORIGIN_REGEX=^https://mobile-web-dev-[a-z0-9-]+\\.a\\.run\\.app$" \
                     --quiet
-            - name: Show URL
-              run: gcloud run services describe ${{ env.SERVICE_NAME }} --platform managed --region ${{ env.GCP_REGION }} --format='value(status.url)'
+            - name: Read service URL
+              id: apiurl
+              run: |
+                  URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --platform managed --region ${{ env.GCP_REGION }} --format='value(status.url)')
+                  echo "url=$URL" >> $GITHUB_OUTPUT
+                  echo "SERVICE_URL=$URL" >> $GITHUB_ENV
+            - name: Wait until healthy
+              run: |
+                  for i in {1..60}; do
+                    if curl -fsS "$SERVICE_URL/health/api" >/dev/null; then
+                      exit 0
+                    fi
+                    sleep 2
+                  done
+                  exit 1
+
+    api-smoke:
+        needs: [deploy-api]
+        name: API smoke (reuse e2e)
+        runs-on: ubuntu-22.04
+        steps:
+            - uses: actions/checkout@v4
+            - name: Install deps for API tests
+              working-directory: apps/api
+              run: npm install --no-audit --no-fund
+            - name: Run Jest against deployed API
+              working-directory: apps/api
+              env:
+                  API_BASE_URL: ${{ needs.deploy-api.outputs.url }}
+              run: |
+                  npx jest -c test/jest-e2e.json --runInBand --testPathPatterns "test/health/.*\.e2e-spec\.ts"
 
     deploy-mobile:
         needs: [changes]
@@ -115,14 +146,12 @@ jobs:
             - name: Deploy to Cloud Run
               run: |
                   gcloud run deploy ${{ env.SERVICE_NAME }} \
-                    --project ${{ env.GCP_PROJECT }} \
-                    --region ${{ env.GCP_REGION }} \
-                    --image "$IMAGE_URI" \
+                    --project  ${{ env.GCP_PROJECT }} \
+                    --region   ${{ env.GCP_REGION }} \
+                    --image    "$IMAGE_URI" \
                     --platform managed \
                     --allow-unauthenticated \
                     --quiet
-            - name: Show URL
-              run: gcloud run services describe ${{ env.SERVICE_NAME }} --platform managed --region ${{ env.GCP_REGION }} --format='value(status.url)'
 
     deploy-web:
         needs: [changes]
@@ -134,6 +163,8 @@ jobs:
         env:
             SERVICE_NAME: web-dev
             IMAGE_NAME: web
+        outputs:
+            url: ${{ steps.weburl.outputs.url }}
         steps:
             - uses: actions/checkout@v4
             - name: Auth
@@ -156,11 +187,51 @@ jobs:
             - name: Deploy to Cloud Run
               run: |
                   gcloud run deploy ${{ env.SERVICE_NAME }} \
-                    --project ${{ env.GCP_PROJECT }} \
-                    --region ${{ env.GCP_REGION }} \
-                    --image "$IMAGE_URI" \
+                    --project  ${{ env.GCP_PROJECT }} \
+                    --region   ${{ env.GCP_REGION }} \
+                    --image    "$IMAGE_URI" \
                     --platform managed \
                     --allow-unauthenticated \
                     --quiet
-            - name: Show URL
-              run: gcloud run services describe ${{ env.SERVICE_NAME }} --platform managed --region ${{ env.GCP_REGION }} --format='value(status.url)'
+            - name: Read service URL
+              id: weburl
+              run: |
+                  URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --platform managed --region ${{ env.GCP_REGION }} --format='value(status.url)')
+                  echo "url=$URL" >> $GITHUB_OUTPUT
+                  echo "SERVICE_URL=$URL" >> $GITHUB_ENV
+            - name: Wait until ready
+              run: |
+                  for i in {1..60}; do
+                    if curl -fsS "$SERVICE_URL/health" >/dev/null; then
+                      exit 0
+                    fi
+                    sleep 2
+                  done
+                  exit 1
+
+    web-e2e:
+        needs: [deploy-api, deploy-web]
+        name: Web smoke (Playwright → deployed web)
+        runs-on: ubuntu-22.04
+        container: mcr.microsoft.com/playwright:v1.56.0-jammy
+        steps:
+            - uses: actions/checkout@v4
+            - run: echo "WEB_BASE_URL=${{ needs.deploy-web.outputs.url }}" >> $GITHUB_ENV
+            - name: Wait until /health is ready
+              run: |
+                  for i in {1..60}; do
+                    if curl -fsS "$WEB_BASE_URL/health" >/dev/null; then
+                      exit 0
+                    fi
+                    sleep 2
+                  done
+                  exit 1
+            - name: Prepare Playwright runner (no-save)
+              working-directory: apps/web
+              run: npm i -D --no-save @playwright/test@1.56.0
+            - env:
+                  WEB_BASE_URL: ${{ env.WEB_BASE_URL }}
+              run: |
+                  npx -y @playwright/test@1.56.0 test \
+                    -c apps/web/playwright.cloud.config.ts \
+                    --reporter=line
