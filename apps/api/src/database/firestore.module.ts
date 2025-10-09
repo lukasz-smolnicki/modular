@@ -27,12 +27,16 @@ const firestoreProvider: Provider<Firestore> = {
         databaseId,
       };
       db = new Firestore(settings);
-      if ((process.env.FIRESTORE_SEED_ON_START ?? "true") === "true") {
-        await runSeed(db);
-      }
     } else {
       db = new Firestore({ projectId, databaseId });
     }
+
+    const shouldSeed =
+      (process.env.FIRESTORE_SEED_ON_START ?? "false") === "true";
+    if (shouldSeed) {
+      await runSeed(db);
+    }
+
     return db;
   },
 };
