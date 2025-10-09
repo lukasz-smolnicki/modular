@@ -1,8 +1,6 @@
 import type { RouteObject } from "react-router-dom";
-import { lazy } from "react";
+import HealthPage from "./HealthPage";
 
-const HealthPage = lazy(() => import("./HealthPage"));
+const routes: RouteObject[] = [{ path: "/health", element: <HealthPage /> }];
 
-export default [
-  { path: "/health", element: <HealthPage /> },
-] satisfies RouteObject[];
+export default routes;
