@@ -2,7 +2,7 @@ import "dotenv/config";
 import { defineConfig } from "@playwright/test";
 
 const API_PORT = Number(process.env.API_PORT ?? 3000);
-const WEB_PORT = Number(process.env.EXPO_WEB_PORT ?? 8081);
+const EXPO_WEB_PORT = Number(process.env.EXPO_WEB_PORT ?? 8081);
 const API_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL || `http://localhost:${API_PORT}`;
 
@@ -10,7 +10,7 @@ export default defineConfig({
   testDir: "./test",
   testMatch: ["**/*.spec.ts"],
   timeout: 60_000,
-  use: { baseURL: `http://localhost:${WEB_PORT}` },
+  use: { baseURL: `http://localhost:${EXPO_WEB_PORT}` },
   webServer: [
     {
       command: "npm run dev:firestore",
@@ -26,14 +26,15 @@ export default defineConfig({
       cwd: "../../",
       env: {
         ...process.env,
-        WEB_ORIGIN: `http://localhost:${WEB_PORT}`,
-        EXPO_WEB_ORIGIN: `http://localhost:${WEB_PORT}`,
-        FIREBASE_EMULATORS_HOST: "127.0.0.1:8080",
+        WEB_ORIGIN: `http://localhost:${EXPO_WEB_PORT}`,
+        FIRESTORE_EMULATOR_HOST:
+          process.env.FIRESTORE_EMULATOR_HOST ?? "127.0.0.1:8080",
+        FIRESTORE_SEED_ON_START: process.env.FIRESTORE_SEED_ON_START ?? "true",
       } as Record<string, string>,
     },
     {
-      command: `npx expo export --platform web && npx serve -s dist -l ${WEB_PORT} --no-clipboard`,
-      port: WEB_PORT,
+      command: `npx expo start --web --port ${EXPO_WEB_PORT} --non-interactive`,
+      port: EXPO_WEB_PORT,
       reuseExistingServer: true,
       cwd: "../../apps/mobile",
       env: {
