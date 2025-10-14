@@ -1,16 +1,16 @@
 {
-    "extends": "expo/tsconfig.base",
-    "compilerOptions": {
-        "target": "ES2020",
-        "module": "ESNext",
-        "moduleResolution": "Bundler",
-        "jsx": "react-jsx",
-        "strict": true,
-        "skipLibCheck": true,
-        "esModuleInterop": true,
-        "baseUrl": ".",
-        "paths": { "@/*": ["src/*"] },
-        "ignoreDeprecations": "6.0"
-    },
-    "include": ["src", "src/main.tsx"]
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] },
+    "ignoreDeprecations": "6.0"
+  },
+  "include": ["src", "src/main.tsx"]
 }
