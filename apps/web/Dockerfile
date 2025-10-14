@@ -7,7 +7,6 @@ RUN npm install --no-audit --no-fund
 COPY apps/web/tsconfig.json ./tsconfig.json
 COPY apps/web/vite.config.ts ./vite.config.ts
 COPY apps/web/index.html ./index.html
-# usuwamy COPY public – katalogu może nie być
 COPY apps/web/src ./src
 
 ARG API_URL=""
