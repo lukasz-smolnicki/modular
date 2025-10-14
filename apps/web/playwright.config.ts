@@ -26,7 +26,9 @@ export default defineConfig({
       env: {
         ...process.env,
         WEB_ORIGIN: `http://localhost:${WEB_PORT}`,
-        FIREBASE_EMULATORS_HOST: "127.0.0.1:8080",
+        FIRESTORE_EMULATOR_HOST:
+          process.env.FIRESTORE_EMULATOR_HOST ?? "127.0.0.1:8080",
+        FIRESTORE_SEED_ON_START: process.env.FIRESTORE_SEED_ON_START ?? "true",
       } as Record<string, string>,
     },
     {
