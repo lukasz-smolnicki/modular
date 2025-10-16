@@ -2,6 +2,7 @@
     "emulators": {
         "hub": { "port": 4400 },
         "firestore": { "port": 8080 },
+        "auth": { "port": 9099 },
         "ui": { "enabled": true, "port": 9150 }
     }
 }

@@ -10,6 +10,7 @@
         "dev:api": "npx dotenv -e .env.local -- npm run --workspace=apps/api api",
         "dev:web": "npx dotenv -e .env.local -- npm run --workspace=apps/web dev",
         "dev:mobile": "npx dotenv -e .env.local -- npm run --workspace=apps/mobile dev",
+        "dev:emulators": "npx -y kill-port 8080 9099 4400 9150 && npx firebase emulators:start --only firestore,auth",
         "lint": "eslint apps --fix --max-warnings=0",
         "test:api": "npx firebase emulators:exec --only firestore --project local-project \"npm run --workspace=apps/api test:e2e\"",
         "test:web": "npx playwright test -c apps/web/playwright.config.ts",
@@ -17,6 +18,7 @@
     },
     "devDependencies": {
         "@playwright/test": "^1.55.1",
+        "@types/firebase": "^2.4.32",
         "@typescript-eslint/eslint-plugin": "^8.45.0",
         "@typescript-eslint/parser": "^8.45.0",
         "concurrently": "^9.2.1",
@@ -42,6 +44,7 @@
     },
     "dependencies": {
         "@types/react": "~19.1.10",
+        "firebase": "^12.4.0",
         "react": "^19.1.0",
         "react-dom": "^19.1.0"
     }

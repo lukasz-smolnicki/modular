@@ -2,10 +2,12 @@ import { NavigationContainer, LinkingOptions } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import HealthScreen from "@/modules/health/HealthScreen";
 import ModulePickerScreen from "@/modules/shell/ModulePickerScreen";
+import LoginScreen from "@/modules/auth/LoginScreen";
 
 type RootStackParamList = {
   Health: undefined;
   Modules: undefined;
+  Auth: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -17,6 +19,7 @@ const linking: LinkingOptions<RootStackParamList> = {
     screens: {
       Health: "health",
       Modules: "modules",
+      Auth: "auth",
     },
   },
 };
@@ -30,6 +33,7 @@ export default function RootNavigator() {
       >
         <Stack.Screen name="Health" component={HealthScreen} />
         <Stack.Screen name="Modules" component={ModulePickerScreen} />
+        <Stack.Screen name="Auth" component={LoginScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
