@@ -14,7 +14,8 @@
     "@nestjs/platform-express": "^11.1.6",
     "firebase-admin": "^13.5.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "@modular/types": "file:../../packages/types"
   },
   "devDependencies": {
     "@nestjs/testing": "^11.1.6",

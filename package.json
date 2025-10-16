@@ -2,7 +2,8 @@
     "name": "modular",
     "private": true,
     "workspaces": [
-        "apps/*"
+        "apps/*",
+        "packages/*"
     ],
     "scripts": {
         "dev:firestore": "npx dotenv -e .env.local -- npm run --workspace=apps/api firestore",

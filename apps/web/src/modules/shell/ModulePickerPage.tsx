@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
 import { apiGet } from "@/api/client";
-import type { ModuleInfo } from "@/types/modules";
+import type { Modules } from "@modular/types";
 
 export default function ModulePickerPage() {
-  const [mods, setMods] = useState<ModuleInfo[]>([]);
+  const [mods, setMods] = useState<Modules.ModuleInfo[]>([]);
   const [err, setErr] = useState("");
 
   useEffect(() => {
     let on = true;
     (async () => {
       try {
-        const list = await apiGet<ModuleInfo[]>("/modules/registry/public");
+        const list = await apiGet<Modules.ModuleInfo[]>(
+          "/modules/registry/public",
+        );
         if (on) setMods(list ?? []);
       } catch (e) {
         if (on) setErr(e instanceof Error ? e.message : String(e));
