@@ -1,5 +1,5 @@
 FROM node:20-alpine AS builder
-WORKDIR /app
+WORKDIR /repo
 
 COPY package*.json ./
 RUN npm install --no-audit --no-fund
@@ -15,7 +15,7 @@ ENV NODE_ENV=production
 COPY package*.json ./
 RUN npm install --omit=dev --no-audit --no-fund
 
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /repo/apps/api/dist ./apps/api/dist
 
 EXPOSE 8080
-CMD ["node", "dist/main.js"]
+CMD ["node", "apps/api/dist/main.js"]
