@@ -15,6 +15,7 @@ export default defineConfig({
       command: "npm run dev:firestore",
       port: 8080,
       reuseExistingServer: true,
+      timeout: 180_000,
       cwd: "../../",
       env: process.env as Record<string, string>,
     },
@@ -22,6 +23,7 @@ export default defineConfig({
       command: "npm run dev:api",
       port: API_PORT,
       reuseExistingServer: true,
+      timeout: 180_000,
       cwd: "../../",
       env: {
         ...process.env,
@@ -35,6 +37,7 @@ export default defineConfig({
       command: `npm run dev -- --port ${WEB_PORT} --strictPort`,
       port: WEB_PORT,
       reuseExistingServer: true,
+      timeout: 180_000,
       cwd: "../../apps/web",
       env: {
         ...process.env,

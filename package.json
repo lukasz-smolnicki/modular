@@ -14,11 +14,9 @@
         "dev:be": "npm-run-all --parallel dev:emulators dev:api",
         "dev:fe": "npm-run-all --parallel dev:web dev:mobile",
         "lint": "eslint apps --fix --max-warnings=0",
-        "test:api": "npx firebase emulators:exec --only firestore --project local-project \"npm run --workspace=apps/api test:e2e\"",
+        "test:api": "npx firebase emulators:exec --only firestore,auth --project local-project \"npm run --workspace=apps/api test:e2e\"",
         "test:web": "npx playwright test -c apps/web/playwright.config.ts",
-        "test:mobile": "npx playwright test -c apps/mobile/playwright.config.ts",
-        "bundle:modular": "node tools/project-flattener/index.js --preset modular -O bundles",
-        "bundle:all": "node tools/project-flattener/index.js --preset single -o bundles/all.txt"
+        "test:mobile": "npx playwright test -c apps/mobile/playwright.config.ts"
     },
     "devDependencies": {
         "@playwright/test": "^1.55.1",
