@@ -11,6 +11,18 @@ function buildUrl(path: string) {
   return `${base}/${p}`;
 }
 
+function devHeaders(): HeadersInit | undefined {
+  if (process.env.NODE_ENV === "production") return undefined;
+  try {
+    const uid =
+      (typeof localStorage !== "undefined" && localStorage.getItem("userId")) ||
+      "demo-user-1";
+    return { "X-User-Id": uid };
+  } catch {
+    return { "X-User-Id": "demo-user-1" };
+  }
+}
+
 async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -22,7 +34,11 @@ async function handle<T>(res: Response): Promise<T> {
 }
 
 export async function apiGet<T>(path: string, init?: GetInit) {
-  const res = await fetch(buildUrl(path), { method: "GET", ...(init ?? {}) });
+  const res = await fetch(buildUrl(path), {
+    method: "GET",
+    headers: { ...(devHeaders() ?? {}), ...(init?.headers ?? {}) },
+    ...(init ?? {}),
+  });
   return handle<T>(res);
 }
 
@@ -35,6 +51,7 @@ export async function apiPost<T>(
     method: "POST",
     headers: {
       "content-type": "application/json",
+      ...(devHeaders() ?? {}),
       ...(init?.headers ?? {}),
     },
     body: body != null ? JSON.stringify(body) : undefined,
