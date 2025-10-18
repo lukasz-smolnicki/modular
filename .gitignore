@@ -71,3 +71,6 @@ firebase-export-*.json
 
 # Docker / lokalne (opcjonalnie)
 *.local
+
+#	Bundles
+/bundles/
