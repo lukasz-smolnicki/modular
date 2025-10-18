@@ -2,6 +2,15 @@ import { Firestore } from "@google-cloud/firestore";
 import { getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 
+function getErrorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  try {
+    return JSON.stringify(e);
+  } catch {
+    return String(e);
+  }
+}
+
 async function ensureAuthUser(
   uid: string,
   email: string,
@@ -10,8 +19,15 @@ async function ensureAuthUser(
   const auth = getAuth();
   try {
     await auth.getUser(uid);
+    return;
   } catch {
-    await auth.createUser({ uid, email, password, emailVerified: true });
+    try {
+      await auth.createUser({ uid, email, password, emailVerified: true });
+    } catch (e: unknown) {
+      const msg = getErrorMessage(e);
+      if (msg.includes("already exists")) return;
+      throw e;
+    }
   }
 }
 
@@ -20,16 +36,12 @@ export async function runSeed(db: Firestore) {
     .doc("health/firestore")
     .set({ message: "Witamy z FIRESTORE" }, { merge: true });
 
-  await db.doc("modules/users").set(
-    {
-      key: "users",
-      name: "Użytkownicy",
-      route: "/users",
-      public: true,
-    },
-    { merge: true },
-  );
-
+  await db
+    .doc("modules/users")
+    .set(
+      { key: "users", name: "Użytkownicy", route: "/users", public: true },
+      { merge: true },
+    );
   await db
     .doc("modules/admin")
     .set(
@@ -100,7 +112,11 @@ export async function runSeed(db: Firestore) {
     { merge: true },
   );
 
-  const usingAuthEmu = !!process.env.FIREBASE_AUTH_EMULATOR_HOST;
+  const usingAuthEmu =
+    !!process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+    !!process.env.VITE_FIREBASE_AUTH_EMULATOR_HOST ||
+    !!process.env.EXPO_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST;
+
   if (usingAuthEmu) {
     if (!getApps().length) {
       initializeApp({

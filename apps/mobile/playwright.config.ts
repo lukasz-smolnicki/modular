@@ -31,17 +31,20 @@ export default defineConfig({
         WEB_ORIGIN: `http://localhost:${EXPO_WEB_PORT}`,
         FIRESTORE_EMULATOR_HOST:
           process.env.FIRESTORE_EMULATOR_HOST ?? "127.0.0.1:8080",
+        FIREBASE_AUTH_EMULATOR_HOST:
+          process.env.FIREBASE_AUTH_EMULATOR_HOST ?? "127.0.0.1:9099",
         FIRESTORE_SEED_ON_START: process.env.FIRESTORE_SEED_ON_START ?? "true",
       } as Record<string, string>,
     },
     {
-      command: `npx expo start --web --port ${EXPO_WEB_PORT} --non-interactive`,
+      command: `npx expo start --web --port ${EXPO_WEB_PORT}`,
       port: EXPO_WEB_PORT,
       reuseExistingServer: true,
       timeout: 180_000,
       cwd: "../../apps/mobile",
       env: {
         ...process.env,
+        CI: "1",
         EXPO_PUBLIC_API_BASE_URL: API_URL,
       } as Record<string, string>,
     },
