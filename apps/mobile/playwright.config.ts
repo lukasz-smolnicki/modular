@@ -5,6 +5,11 @@ const API_PORT = Number(process.env.API_PORT ?? 3000);
 const EXPO_WEB_PORT = Number(process.env.EXPO_WEB_PORT ?? 8081);
 const API_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL || `http://localhost:${API_PORT}`;
+const isCI = String(process.env.CI || "").toLowerCase() === "true";
+
+const appCommand = isCI
+  ? `npx expo export --platform web && npx -y serve -s dist -l ${EXPO_WEB_PORT}`
+  : `npx expo start --web --port ${EXPO_WEB_PORT}`;
 
 export default defineConfig({
   testDir: "./test",
@@ -37,7 +42,7 @@ export default defineConfig({
       } as Record<string, string>,
     },
     {
-      command: `npx expo start --web --port ${EXPO_WEB_PORT}`,
+      command: appCommand,
       port: EXPO_WEB_PORT,
       reuseExistingServer: true,
       timeout: 180_000,
@@ -45,6 +50,7 @@ export default defineConfig({
       env: {
         ...process.env,
         CI: "1",
+        EXPO_NO_INTERACTIVE: "1",
         EXPO_PUBLIC_API_BASE_URL: API_URL,
       } as Record<string, string>,
     },

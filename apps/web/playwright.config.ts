@@ -4,6 +4,11 @@ import { defineConfig } from "@playwright/test";
 const API_PORT = Number(process.env.API_PORT ?? 3000);
 const WEB_PORT = Number(process.env.WEB_PORT ?? 5173);
 const API_URL = process.env.VITE_API_BASE_URL || `http://localhost:${API_PORT}`;
+const isCI = String(process.env.CI || "").toLowerCase() === "true";
+
+const webCommand = isCI
+  ? `npm run build && npx -y serve -s dist -l ${WEB_PORT}`
+  : `npm run dev -- --port ${WEB_PORT} --strictPort`;
 
 export default defineConfig({
   testDir: "./test",
@@ -36,13 +41,14 @@ export default defineConfig({
       } as Record<string, string>,
     },
     {
-      command: `npm run dev -- --port ${WEB_PORT} --strictPort`,
+      command: webCommand,
       port: WEB_PORT,
       reuseExistingServer: true,
       timeout: 180_000,
       cwd: "../../apps/web",
       env: {
         ...process.env,
+        CI: "1",
         VITE_API_BASE_URL: API_URL,
       } as Record<string, string>,
     },
