@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { apiGet } from "@/api/client";
 import type { Modules } from "@modular/types";
 
@@ -17,7 +18,9 @@ export default function ModulePickerPage() {
           apiGet<UserMod[]>("/users/me/modules"),
         ]);
         const allowed = new Set((mine ?? []).map((m) => m.key));
-        const filtered = (pub ?? []).filter((m) => allowed.has(m.key));
+        const filtered = (pub ?? []).filter(
+          (m) => allowed.has(m.key) || m.key === "dashboard",
+        );
         if (on) setMods(filtered);
       } catch (e) {
         if (on) setErr(e instanceof Error ? e.message : String(e));
@@ -34,7 +37,7 @@ export default function ModulePickerPage() {
       <ul style={{ marginTop: 12 }}>
         {mods.map((m) => (
           <li key={m.key}>
-            <strong>{m.name}</strong>{" "}
+            <Link to={m.route ?? `/${m.key}`}>{m.name}</Link>{" "}
             <span style={{ opacity: 0.6 }}>{m.route ?? `/${m.key}`}</span>
           </li>
         ))}

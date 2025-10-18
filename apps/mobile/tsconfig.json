@@ -9,8 +9,9 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] },
-    "ignoreDeprecations": "6.0"
+    "paths": {
+      "@/*": ["src/*"]
+    }
   },
   "include": ["src", "src/main.tsx"]
 }

@@ -1,12 +1,14 @@
 import { NavigationContainer, LinkingOptions } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import HealthScreen from "@/modules/health/HealthScreen";
 import ModulePickerScreen from "@/modules/shell/ModulePickerScreen";
+import DashboardScreen from "@/modules/shell/DashboardScreen";
 import LoginScreen from "@/modules/auth/LoginScreen";
+import { useAuthUser } from "@/hooks/useAuthUser";
+import { useEffect, useState } from "react";
 
-type RootStackParamList = {
-  Health: undefined;
+export type RootStackParamList = {
   Modules: undefined;
+  Dashboard: undefined;
   Auth: undefined;
 };
 
@@ -17,23 +19,34 @@ const linking: LinkingOptions<RootStackParamList> = {
   prefixes: [`http://localhost:${port}`, "/"],
   config: {
     screens: {
-      Health: "health",
-      Modules: "modules",
       Auth: "auth",
+      Dashboard: "",
+      Modules: "modules",
     },
   },
 };
 
 export default function RootNavigator() {
+  const user = useAuthUser();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    setReady(true);
+  }, [user]);
+
+  if (!ready) return null;
+
+  const initial = user ? "Modules" : "Auth";
+
   return (
     <NavigationContainer linking={linking}>
       <Stack.Navigator
         screenOptions={{ headerShown: false }}
-        initialRouteName="Health"
+        initialRouteName={initial}
       >
-        <Stack.Screen name="Health" component={HealthScreen} />
-        <Stack.Screen name="Modules" component={ModulePickerScreen} />
         <Stack.Screen name="Auth" component={LoginScreen} />
+        <Stack.Screen name="Dashboard" component={DashboardScreen} />
+        <Stack.Screen name="Modules" component={ModulePickerScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

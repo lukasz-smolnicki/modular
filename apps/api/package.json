@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "firestore": "npx -y kill-port 8080 4000 4400 9150 && npx -y firebase emulators:start --only firestore",
-    "api": "wait-on tcp:127.0.0.1:8080 && cross-env FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 ts-node src/main.ts",
+    "api": "wait-on tcp:127.0.0.1:8080 tcp:127.0.0.1:9099 && cross-env FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 ts-node src/main.ts",
     "dev": "npm-run-all --parallel firestore api",
-    "test:e2e": "cross-env FIRESTORE_SEED_ON_START=true FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 jest -c test/jest-e2e.json"
+    "test:e2e": "cross-env FIRESTORE_SEED_ON_START=true FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 jest -c test/jest-e2e.json"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.6",
