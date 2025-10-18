@@ -1,0 +1,19 @@
+{
+    "name": "project-flattener",
+    "version": "1.2.1",
+    "description": "Klejenie plików projektu do paczek tekstowych z nagłówkami ścieżek.",
+    "bin": {
+        "project-flatten": "index.js"
+    },
+    "type": "commonjs",
+    "engines": {
+        "node": ">=18"
+    },
+    "scripts": {
+        "start": "node index.js --help"
+    },
+    "dependencies": {
+        "globby": "13.2.2",
+        "minimist": "^1.2.8"
+    }
+}
