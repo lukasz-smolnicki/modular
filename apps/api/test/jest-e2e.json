@@ -1,9 +1,21 @@
 {
-  "moduleFileExtensions": ["js", "json", "ts"],
+  "moduleFileExtensions": [
+    "js",
+    "json",
+    "ts"
+  ],
   "rootDir": "..",
   "testRegex": "test/.+\\.e2e-spec\\.ts$",
   "transform": {
-    "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": "tsconfig.spec.json" }]
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "tsconfig": "tsconfig.spec.json"
+      }
+    ]
   },
-  "testEnvironment": "node"
+  "testEnvironment": "node",
+  "moduleNameMapper": {
+    "^@paralleldrive/cuid2$": "<rootDir>/test/mocks/cuid2.js"
+  }
 }

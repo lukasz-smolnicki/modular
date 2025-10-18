@@ -17,7 +17,7 @@ export default defineConfig({
   use: { baseURL: `http://localhost:${WEB_PORT}` },
   webServer: [
     {
-      command: "npm run dev:firestore",
+      command: "npm run dev:emulators",
       port: 8080,
       reuseExistingServer: true,
       timeout: 600_000,

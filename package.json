@@ -5,6 +5,9 @@
         "apps/*",
         "packages/*"
     ],
+    "overrides": {
+        "formidable": "2.1.2"
+    },
     "scripts": {
         "dev:firestore": "npx dotenv -e .env.local -- npm run --workspace=apps/api firestore",
         "dev:api": "npx dotenv -e .env.local -- npm run --workspace=apps/api api",
