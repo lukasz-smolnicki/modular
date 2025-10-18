@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { apiGet } from "@/api/client";
 import type { Modules } from "@modular/types";
 
+type UserMod = { key: string; role: "read" | "write" | "admin" };
+
 export default function ModulePickerPage() {
   const [mods, setMods] = useState<Modules.ModuleInfo[]>([]);
   const [err, setErr] = useState("");
@@ -10,10 +12,13 @@ export default function ModulePickerPage() {
     let on = true;
     (async () => {
       try {
-        const list = await apiGet<Modules.ModuleInfo[]>(
-          "/modules/registry/public",
-        );
-        if (on) setMods(list ?? []);
+        const [pub, mine] = await Promise.all([
+          apiGet<Modules.ModuleInfo[]>("/modules/registry/public"),
+          apiGet<UserMod[]>("/users/me/modules"),
+        ]);
+        const allowed = new Set((mine ?? []).map((m) => m.key));
+        const filtered = (pub ?? []).filter((m) => allowed.has(m.key));
+        if (on) setMods(filtered);
       } catch (e) {
         if (on) setErr(e instanceof Error ? e.message : String(e));
       }
