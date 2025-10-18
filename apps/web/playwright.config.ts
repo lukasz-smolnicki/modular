@@ -7,7 +7,7 @@ const API_URL = process.env.VITE_API_BASE_URL || `http://localhost:${API_PORT}`;
 const isCI = String(process.env.CI || "").toLowerCase() === "true";
 
 const webCommand = isCI
-  ? `npm run build && npx -y serve -s dist -l ${WEB_PORT}`
+  ? `npx -y wait-on http-get://localhost:${API_PORT}/health && npm run build && npx -y serve -s dist -l ${WEB_PORT}`
   : `npm run dev -- --port ${WEB_PORT} --strictPort`;
 
 export default defineConfig({
@@ -20,7 +20,7 @@ export default defineConfig({
       command: "npm run dev:firestore",
       port: 8080,
       reuseExistingServer: true,
-      timeout: 180_000,
+      timeout: 600_000,
       cwd: "../../",
       env: process.env as Record<string, string>,
     },
@@ -28,7 +28,7 @@ export default defineConfig({
       command: "npm run dev:api",
       port: API_PORT,
       reuseExistingServer: true,
-      timeout: 180_000,
+      timeout: 600_000,
       cwd: "../../",
       env: {
         ...process.env,
@@ -44,7 +44,7 @@ export default defineConfig({
       command: webCommand,
       port: WEB_PORT,
       reuseExistingServer: true,
-      timeout: 180_000,
+      timeout: 600_000,
       cwd: "../../apps/web",
       env: {
         ...process.env,
