@@ -7,7 +7,7 @@ const API_URL = process.env.VITE_API_BASE_URL || `http://localhost:${API_PORT}`;
 const isCI = String(process.env.CI || "").toLowerCase() === "true";
 
 const webCommand = isCI
-  ? `npx -y wait-on http-get://localhost:${API_PORT}/health && npm run build && npx -y serve -s dist -l ${WEB_PORT}`
+  ? `npx -y wait-on http-get://localhost:${API_PORT}/health/api && npm run build && npx -y serve -s dist -l ${WEB_PORT}`
   : `npm run dev -- --port ${WEB_PORT} --strictPort`;
 
 export default defineConfig({
@@ -18,9 +18,9 @@ export default defineConfig({
   webServer: [
     {
       command: "npm run dev:emulators",
-      port: 8080,
+      port: 9150,
       reuseExistingServer: true,
-      timeout: 600_000,
+      timeout: 180_000,
       cwd: "../../",
       env: process.env as Record<string, string>,
     },
@@ -28,7 +28,7 @@ export default defineConfig({
       command: "npm run dev:api",
       port: API_PORT,
       reuseExistingServer: true,
-      timeout: 600_000,
+      timeout: 180_000,
       cwd: "../../",
       env: {
         ...process.env,
@@ -44,7 +44,7 @@ export default defineConfig({
       command: webCommand,
       port: WEB_PORT,
       reuseExistingServer: true,
-      timeout: 600_000,
+      timeout: 180_000,
       cwd: "../../apps/web",
       env: {
         ...process.env,

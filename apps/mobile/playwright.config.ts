@@ -8,8 +8,8 @@ const API_URL =
 const isCI = String(process.env.CI || "").toLowerCase() === "true";
 
 const appCommand = isCI
-  ? `npx -y wait-on http-get://localhost:${API_PORT}/health && npx expo export --platform web && npx -y serve -s dist -l ${EXPO_WEB_PORT}`
-  : `npx -y wait-on http-get://localhost:${API_PORT}/health && npx expo start --web --port ${EXPO_WEB_PORT}`;
+  ? `npx -y wait-on http-get://localhost:${API_PORT}/health/api && npx expo export --platform web && npx -y serve -s dist -l ${EXPO_WEB_PORT}`
+  : `npx -y wait-on http-get://localhost:${API_PORT}/health/api && npx expo start --web --port ${EXPO_WEB_PORT}`;
 
 export default defineConfig({
   testDir: "./test",
@@ -19,9 +19,9 @@ export default defineConfig({
   webServer: [
     {
       command: "npm run dev:emulators",
-      port: 8080,
+      port: 9150,
       reuseExistingServer: true,
-      timeout: 600_000,
+      timeout: 180_000,
       cwd: "../../",
       env: process.env as Record<string, string>,
     },
@@ -29,7 +29,7 @@ export default defineConfig({
       command: "npm run dev:api",
       port: API_PORT,
       reuseExistingServer: true,
-      timeout: 600_000,
+      timeout: 180_000,
       cwd: "../../",
       env: {
         ...process.env,
@@ -45,7 +45,7 @@ export default defineConfig({
       command: appCommand,
       port: EXPO_WEB_PORT,
       reuseExistingServer: true,
-      timeout: 600_000,
+      timeout: 180_000,
       cwd: "../../apps/mobile",
       env: {
         ...process.env,
