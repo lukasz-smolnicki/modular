@@ -1,26 +1,31 @@
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
-import { apiGet } from "@/api/client";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  Pressable,
+} from "react-native";
 import type { Modules } from "@modular/types";
-
-type UserMod = { key: string; role: "read" | "write" | "admin" };
+import { useAuthStatus } from "@/hooks/useAuthStatus";
+import { fetchPublicModules, fetchVisibleModules } from "@/data/userModules";
+import { useNavigation } from "@react-navigation/native";
 
 export default function ModulePickerScreen() {
   const [mods, setMods] = useState<Modules.ModuleInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  const { user } = useAuthStatus();
+  const nav = useNavigation();
 
   useEffect(() => {
     let on = true;
     (async () => {
       try {
-        const [pub, mine] = await Promise.all([
-          apiGet<Modules.ModuleInfo[]>("/modules/registry/public"),
-          apiGet<UserMod[]>("/users/me/modules"),
-        ]);
-        const allowed = new Set((mine ?? []).map((m) => m.key));
-        const filtered = (pub ?? []).filter((m) => allowed.has(m.key));
-        if (on) setMods(filtered);
+        const list = user
+          ? await fetchVisibleModules(user.uid)
+          : await fetchPublicModules();
+        if (on) setMods(list ?? []);
       } catch (e) {
         if (on) setErr(e instanceof Error ? e.message : String(e));
       } finally {
@@ -30,7 +35,7 @@ export default function ModulePickerScreen() {
     return () => {
       on = false;
     };
-  }, []);
+  }, [user]);
 
   return (
     <View style={s.wrap}>
@@ -43,10 +48,14 @@ export default function ModulePickerScreen() {
       ) : (
         <View style={{ marginTop: 12 }}>
           {mods.map((m) => (
-            <View key={m.key} style={s.item}>
+            <Pressable
+              key={m.key}
+              style={s.item}
+              onPress={() => nav.navigate("Modules" as never)}
+            >
               <Text style={s.itemTitle}>{m.name}</Text>
               <Text style={s.itemSub}>{m.route ?? `/${m.key}`}</Text>
-            </View>
+            </Pressable>
           ))}
           {mods.length === 0 && <Text style={s.p}>Brak modułów</Text>}
         </View>

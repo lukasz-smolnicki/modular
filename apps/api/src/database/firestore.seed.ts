@@ -18,6 +18,19 @@ export async function runSeed(db: Firestore) {
     { merge: true },
   );
 
+  await db.doc("modules/about").set(
+    {
+      key: "about",
+      name: "O aplikacji",
+      route: "/about",
+      public: true,
+      icon: "ℹ️",
+      description: "Informacje o aplikacji",
+      order: 1,
+    },
+    { merge: true },
+  );
+
   await db.doc("modules/clients").set(
     {
       key: "clients",
@@ -26,7 +39,7 @@ export async function runSeed(db: Firestore) {
       public: true,
       icon: "👥",
       description: "Lista i profil klientów",
-      order: 1,
+      order: 2,
     },
     { merge: true },
   );
@@ -39,7 +52,7 @@ export async function runSeed(db: Firestore) {
       public: true,
       icon: "💼",
       description: "Oferty handlowe",
-      order: 2,
+      order: 3,
     },
     { merge: true },
   );
@@ -52,7 +65,7 @@ export async function runSeed(db: Firestore) {
       public: true,
       icon: "✅",
       description: "Zadania i aktywności",
-      order: 3,
+      order: 4,
     },
     { merge: true },
   );
@@ -65,7 +78,7 @@ export async function runSeed(db: Firestore) {
       public: true,
       icon: "📝",
       description: "Notatki i komentarze",
-      order: 4,
+      order: 5,
     },
     { merge: true },
   );
@@ -74,13 +87,14 @@ export async function runSeed(db: Firestore) {
     {
       id: "admin-1",
       roles: ["admin"],
-      enabledModules: ["user", "clients", "offers", "tasks", "notes"],
+      enabledModules: ["user", "clients", "offers", "tasks", "notes", "about"],
       enabled: {
         user: "admin",
         clients: "admin",
         offers: "admin",
         tasks: "admin",
         notes: "admin",
+        about: "read",
       },
     },
     { merge: true },
@@ -89,11 +103,13 @@ export async function runSeed(db: Firestore) {
   await db.doc("users/user-1").set(
     {
       id: "user-1",
-      enabledModules: ["user", "clients", "offers"],
+      roles: ["user"],
+      enabledModules: ["user", "clients", "offers", "about"],
       enabled: {
         user: "read",
         clients: "write",
         offers: "read",
+        about: "read",
       },
     },
     { merge: true },

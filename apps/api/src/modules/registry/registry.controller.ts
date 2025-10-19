@@ -1,13 +1,17 @@
-import { Controller, Get } from "@nestjs/common";
+import { Controller, Get, Query } from "@nestjs/common";
 import { RegistryService } from "./registry.service";
-import type { Modules } from "@modular/types";
 
 @Controller("modules/registry")
 export class RegistryController {
   constructor(private readonly svc: RegistryService) {}
 
   @Get("public")
-  async listPublic(): Promise<Modules.ModuleInfo[]> {
+  async listPublic() {
     return this.svc.listPublic();
+  }
+
+  @Get("visible")
+  async listVisible(@Query("uid") uid?: string) {
+    return this.svc.listVisible(uid);
   }
 }
