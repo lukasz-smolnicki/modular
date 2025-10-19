@@ -4,11 +4,11 @@ export async function runSeed(db: Firestore)
 {
   await db.doc("health/firestore").set({ message: "Witamy z FIRESTORE" }, { merge: true });
 
-  await db.doc("modules/users").set(
+  await db.doc("modules/user").set(
     {
-      key: "users",
+      key: "user",
       name: "Użytkownicy",
-      route: "/users",
+      route: "/user",
       public: true,
       icon: "👤",
       description: "Profil i ustawienia użytkownika",
@@ -73,9 +73,9 @@ export async function runSeed(db: Firestore)
     {
       id: "admin-1",
       roles: ["admin"],
-      enabledModules: ["users", "clients", "offers", "tasks", "notes"],
+      enabledModules: ["user", "clients", "offers", "tasks", "notes"],
       enabled: {
-        users: "admin",
+        user: "admin",
         clients: "admin",
         offers: "admin",
         tasks: "admin",
@@ -88,9 +88,9 @@ export async function runSeed(db: Firestore)
   await db.doc("users/user-1").set(
     {
       id: "user-1",
-      enabledModules: ["users", "clients", "offers"],
+      enabledModules: ["user", "clients", "offers"],
       enabled: {
-        users: "read",
+        user: "read",
         clients: "write",
         offers: "read"
       }

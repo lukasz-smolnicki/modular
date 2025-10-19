@@ -1,14 +1,21 @@
 import { useEffect, useState } from "react";
-import { auth } from "@/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
+import { auth } from "@/firebase";
 
-export function useAuthStatus() {
-  const [user, setUser] = useState<User | null | undefined>(undefined);
+export function useAuthStatus(): { user: User | null; loading: boolean }
+{
+  const [user, setUser] = useState<User | null>(auth.currentUser);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    const sub = onAuthStateChanged(auth, (u) => setUser(u ?? null));
-    return () => sub();
+  useEffect(() =>
+  {
+    const unsub = onAuthStateChanged(auth, (u) =>
+    {
+      setUser(u);
+      setLoading(false);
+    });
+    return () => unsub();
   }, []);
 
-  return { user, loading: user === undefined };
+  return { user, loading };
 }
