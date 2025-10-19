@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import {
   useNavigation,
@@ -8,6 +8,8 @@ import {
 import { apiGet } from "@/api/client";
 import type { Modules } from "@modular/types";
 import type { RootStackParamList } from "@/navigation/RootNavigator";
+import { useAuthStatus } from "@/hooks/useAuthStatus";
+import { fetchUserSettings } from "@/data/userModules";
 
 function resolveRoute(m: Modules.ModuleInfo): keyof RootStackParamList {
   const key = (m.key || "").toLowerCase();
@@ -31,6 +33,9 @@ export default function TopBar() {
   const [open, setOpen] = useState(false);
   const nav = useNavigation<NavigationProp<RootStackParamList>>();
   const route = useRoute();
+  const { user } = useAuthStatus();
+  const [enabled, setEnabled] = useState<string[] | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     let on = true;
@@ -49,6 +54,41 @@ export default function TopBar() {
     };
   }, []);
 
+  useEffect(() => {
+    let on = true;
+    (async () => {
+      if (!user) {
+        if (on) {
+          setEnabled(null);
+          setIsAdmin(false);
+        }
+        return;
+      }
+      try {
+        const s = await fetchUserSettings(user.uid);
+        if (on) {
+          setEnabled(s.enabled);
+          setIsAdmin(s.isAdmin);
+        }
+      } catch {
+        if (on) {
+          setEnabled([]);
+          setIsAdmin(false);
+        }
+      }
+    })();
+    return () => {
+      on = false;
+    };
+  }, [user]);
+
+  const visibleMods = useMemo(() => {
+    if (!user) return mods;
+    if (isAdmin) return mods;
+    const set = new Set([..."users", ...(enabled ?? [])]);
+    return mods.filter((m) => set.has(m.key));
+  }, [mods, user, enabled, isAdmin]);
+
   function goTo(m: Modules.ModuleInfo) {
     setOpen(false);
     const name = resolveRoute(m);
@@ -59,20 +99,24 @@ export default function TopBar() {
     <View style={s.bar}>
       <Text style={s.brand}>PowerApp</Text>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <Pressable onPress={() => setOpen((p) => !p)} style={s.ddBtn}>
+        <Pressable
+          onPress={() => setOpen((p) => !p)}
+          style={s.ddBtn}
+          testID="modules-toggle"
+        >
           <Text style={s.ddText}>Moduły ▾</Text>
         </Pressable>
         <Text style={s.where}>{String(route.name)}</Text>
       </View>
       {open && (
-        <View style={s.ddMenu}>
-          {mods.map((m) => (
+        <View style={s.ddMenu} testID="modules-menu">
+          {visibleMods.map((m) => (
             <Pressable key={m.key} onPress={() => goTo(m)} style={s.ddItem}>
               <Text style={{ marginRight: 6 }}>{m.icon ?? "•"}</Text>
               <Text>{m.name}</Text>
             </Pressable>
           ))}
-          {mods.length === 0 && (
+          {visibleMods.length === 0 && (
             <Text style={{ opacity: 0.6 }}>Brak modułów</Text>
           )}
         </View>
