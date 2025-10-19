@@ -1,97 +1,99 @@
-import { useEffect, useState } from "react";
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { fetchUserSettings } from "@/data/userModules";
-
-type Mod = { key: string; name: string; route?: string };
+import { useEffect, useMemo, useState } from "react";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { fetchPublicModules, fetchVisibleModules } from "@/data/userModules";
+import { useAuthStatus } from "@/hooks/useAuthStatus";
+import type { Modules } from "@modular/types";
 
 export default function AppShell() {
-  const [mods, setMods] = useState<Mod[]>([]);
-  const [loaded, setLoaded] = useState(false);
-  const [err, setErr] = useState("");
+  const [mods, setMods] = useState<Modules.ModuleInfo[]>([]);
+  const { user } = useAuthStatus();
+  const nav = useNavigate();
   const loc = useLocation();
+
+  useEffect(() => {
+    if (loc.pathname === "/") {
+      nav("/user", { replace: true });
+    }
+  }, [loc.pathname, nav]);
 
   useEffect(() => {
     let on = true;
     (async () => {
       try {
-        const s = await fetchUserSettings();
-        if (on) setMods(s.modules);
-      } catch (e) {
-        if (on) setErr(e instanceof Error ? e.message : String(e));
-      } finally {
-        if (on) setLoaded(true);
+        const list = user
+          ? await fetchVisibleModules(user.uid)
+          : await fetchPublicModules();
+        if (on) setMods(list ?? []);
+      } catch {
+        if (on) setMods([]);
       }
     })();
     return () => {
       on = false;
     };
-  }, []);
+  }, [user]);
+
+  const sorted = useMemo(() => {
+    return [...mods].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+  }, [mods]);
 
   return (
     <div
-      style={{ display: "grid", gridTemplateRows: "48px 1fr", height: "100vh" }}
+      style={{
+        display: "grid",
+        gridTemplateColumns: "220px 1fr",
+        height: "100vh",
+      }}
     >
       <header
         style={{
+          gridColumn: "1 / -1",
+          height: 48,
+          borderBottom: "1px solid #e5e7eb",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 16px",
-          borderBottom: "1px solid #e5e7eb",
+          padding: "0 12px",
+          fontFamily: "ui-sans-serif, system-ui",
         }}
       >
-        <Link
-          to="/"
-          style={{ textDecoration: "none", color: "inherit", fontWeight: 700 }}
-        >
-          PowerApp
-        </Link>
-        <div style={{ opacity: 0.7 }}>User</div>
+        <strong>PowerApp</strong>
+        <span style={{ opacity: 0.6 }}>Użytkownik</span>
       </header>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "240px 1fr",
-          minHeight: 0,
-        }}
-      >
-        <aside
-          style={{
-            borderRight: "1px solid #e5e7eb",
-            padding: "12px",
-            overflow: "auto",
-          }}
-        >
-          <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 8 }}>
-            Moduły
-          </div>
-          <nav style={{ display: "grid", gap: 4 }}>
-            {mods.map((m) => (
-              <NavLink
-                key={m.key}
-                to={m.route ?? `/${m.key}`}
-                style={({ isActive }) => ({
-                  padding: "6px 8px",
-                  borderRadius: 6,
-                  textDecoration: "none",
-                  color: "inherit",
-                  background: isActive ? "#f3f4f6" : "transparent",
-                })}
-              >
-                • {m.name}
-              </NavLink>
-            ))}
-          </nav>
-          {!!err && (
-            <div style={{ marginTop: 12, color: "#b91c1c" }}>{err}</div>
+      <aside style={{ borderRight: "1px solid #e5e7eb", padding: 12 }}>
+        <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 8 }}>
+          Moduły
+        </div>
+        <nav style={{ display: "grid", gap: 6 }}>
+          {sorted.map((m) => (
+            <Link
+              key={m.key}
+              to={m.route ?? `/${m.key}`}
+              style={{
+                padding: "8px 10px",
+                borderRadius: 6,
+                textDecoration: "none",
+                color: "#111827",
+                background:
+                  loc.pathname === (m.route ?? `/${m.key}`)
+                    ? "#f3f4f6"
+                    : "transparent",
+              }}
+            >
+              <span style={{ marginRight: 6 }}>{m.icon ?? "•"}</span>
+              {m.name}
+            </Link>
+          ))}
+          {sorted.length === 0 && (
+            <div style={{ opacity: 0.6 }}>Brak modułów</div>
           )}
-        </aside>
+        </nav>
+      </aside>
 
-        <main style={{ padding: 16, overflow: "auto" }}>
-          {!loaded ? <div>Ładowanie…</div> : <Outlet key={loc.key} />}
-        </main>
-      </div>
+      <main style={{ padding: 24, overflow: "auto" }}>
+        <Outlet />
+      </main>
     </div>
   );
 }

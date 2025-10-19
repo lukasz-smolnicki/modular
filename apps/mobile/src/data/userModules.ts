@@ -1,28 +1,34 @@
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/firestore";
-import type { Users, Core } from "@modular/types";
+import type { Modules, Users } from "@modular/types";
+import { apiGet } from "@/api/client";
 
-type WithRoles = Partial<Users.UserDoc> & { roles?: string[] };
+export async function fetchPublicModules(): Promise<Modules.ModuleInfo[]> {
+  const res = await apiGet<Modules.ModuleInfo[]>("/modules/registry/public");
+  return Array.isArray(res) ? res : [];
+}
 
-export async function fetchUserSettings(uid: string): Promise<{
-  enabled: Core.ModuleKey[];
-  isAdmin: boolean;
-}> {
-  const ref = doc(db, "users", uid);
-  const snap = await getDoc(ref);
-  const data = (snap.data() || {}) as WithRoles;
+export async function fetchVisibleModules(
+  uid: string,
+): Promise<Modules.ModuleInfo[]> {
+  const res = await apiGet<Modules.ModuleInfo[]>(
+    `/modules/registry/visible?uid=${encodeURIComponent(uid)}`,
+  );
+  return Array.isArray(res) ? res : [];
+}
 
-  const enabledArr = Array.isArray(data.enabledModules)
-    ? data.enabledModules
-    : undefined;
-  const enabledMap =
-    data.enabled && typeof data.enabled === "object"
-      ? Object.keys(data.enabled as Record<string, unknown>)
-      : undefined;
-  const enabled = (enabledArr ?? enabledMap ?? []) as Core.ModuleKey[];
-
-  const roles = Array.isArray(data.roles) ? data.roles : [];
-  const isAdmin = roles.includes("admin");
-
-  return { enabled, isAdmin };
+export async function fetchUserSettings(
+  uid: string,
+): Promise<Users.UserSettings> {
+  const res = await fetch(`/viewer/${encodeURIComponent(uid)}`, {
+    method: "GET",
+  }).catch(() => undefined);
+  if (!res || !res.ok) return { uid, enabled: [], isAdmin: false };
+  const ct = res.headers.get("content-type") || "";
+  if (!ct.includes("application/json"))
+    return { uid, enabled: [], isAdmin: false };
+  const json = (await res.json()) as Partial<Users.UserSettings>;
+  return {
+    uid,
+    enabled: (json.enabled ?? []) as string[],
+    isAdmin: Boolean(json.isAdmin),
+  };
 }

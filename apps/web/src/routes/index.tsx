@@ -1,18 +1,24 @@
 import type { RouteObject } from "react-router-dom";
-import { Navigate } from "react-router-dom";
-import AppShell from "@/layout/AppShell";
-import UserPage from "@/modules/user/UserPage";
+import ModulePickerPage from "@/modules/shell/ModulePickerPage";
+import LoginPage from "@/modules/auth/LoginPage";
+import aboutRoutes from "@/modules/about/routes";
 import healthRoutes from "@/modules/health/routes";
+import AppShell from "@/layout/AppShell";
+
+function RedirectUser() {
+  return null;
+}
 
 export const routes: RouteObject[] = [
   {
     path: "/",
     element: <AppShell />,
     children: [
-      { index: true, element: <Navigate to="/user" replace /> },
-      { path: "user", element: <UserPage /> },
+      { path: "", element: <RedirectUser /> },
+      { path: "/modules/*", element: <ModulePickerPage /> },
+      { path: "/user", element: <LoginPage /> },
+      ...aboutRoutes,
       ...healthRoutes,
-      { path: "*", element: <div /> },
     ],
   },
 ];
