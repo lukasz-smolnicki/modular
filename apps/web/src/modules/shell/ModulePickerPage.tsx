@@ -1,24 +1,21 @@
 import { useEffect, useState } from "react";
-import { apiGet } from "@/api/client";
 import type { Modules } from "@modular/types";
-
-type UserMod = { key: string; role: "read" | "write" | "admin" };
+import { useAuthStatus } from "@/hooks/useAuthStatus";
+import { fetchPublicModules, fetchVisibleModules } from "@/data/userModules";
 
 export default function ModulePickerPage() {
   const [mods, setMods] = useState<Modules.ModuleInfo[]>([]);
   const [err, setErr] = useState("");
+  const { user } = useAuthStatus();
 
   useEffect(() => {
     let on = true;
     (async () => {
       try {
-        const [pub, mine] = await Promise.all([
-          apiGet<Modules.ModuleInfo[]>("/modules/registry/public"),
-          apiGet<UserMod[]>("/users/me/modules"),
-        ]);
-        const allowed = new Set((mine ?? []).map((m) => m.key));
-        const filtered = (pub ?? []).filter((m) => allowed.has(m.key));
-        if (on) setMods(filtered);
+        const list = user
+          ? await fetchVisibleModules(user.uid)
+          : await fetchPublicModules();
+        if (on) setMods(list ?? []);
       } catch (e) {
         if (on) setErr(e instanceof Error ? e.message : String(e));
       }
@@ -26,7 +23,7 @@ export default function ModulePickerPage() {
     return () => {
       on = false;
     };
-  }, []);
+  }, [user]);
 
   return (
     <div style={{ padding: 24, maxWidth: 640, margin: "0 auto" }}>
