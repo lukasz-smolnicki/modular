@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import { apiGet } from "@/api/client";
 import type { Modules } from "@modular/types";
 
+type UserMod = { key: string; role: "read" | "write" | "admin" };
+
 export default function ModulePickerScreen() {
   const [mods, setMods] = useState<Modules.ModuleInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -12,10 +14,13 @@ export default function ModulePickerScreen() {
     let on = true;
     (async () => {
       try {
-        const list = await apiGet<Modules.ModuleInfo[]>(
-          "/modules/registry/public",
-        );
-        if (on) setMods(list ?? []);
+        const [pub, mine] = await Promise.all([
+          apiGet<Modules.ModuleInfo[]>("/modules/registry/public"),
+          apiGet<UserMod[]>("/users/me/modules"),
+        ]);
+        const allowed = new Set((mine ?? []).map((m) => m.key));
+        const filtered = (pub ?? []).filter((m) => allowed.has(m.key));
+        if (on) setMods(filtered);
       } catch (e) {
         if (on) setErr(e instanceof Error ? e.message : String(e));
       } finally {
