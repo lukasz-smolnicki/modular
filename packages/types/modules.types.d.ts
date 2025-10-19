@@ -5,4 +5,7 @@ export type ModuleInfo = {
     name: string;
     route?: string;
     public?: boolean;
+    icon?: string;
+    description?: string;
+    order?: number;
 };

@@ -21,6 +21,14 @@ function resolveRoute(m: Modules.ModuleInfo): keyof RootStackParamList
     return "Modules";
 }
 
+function sortModules(a: Modules.ModuleInfo, b: Modules.ModuleInfo)
+{
+    const ao = a.order ?? 999;
+    const bo = b.order ?? 999;
+    if (ao !== bo) return ao - bo;
+    return (a.name || "").localeCompare(b.name || "");
+}
+
 export default function TopBar()
 {
     const [mods, setMods] = useState<Modules.ModuleInfo[]>([]);
@@ -38,7 +46,7 @@ export default function TopBar()
                 const list =
                     (await apiGet<Modules.ModuleInfo[]>("/modules/registry/public")) ??
                     [];
-                if (on) setMods(list);
+                if (on) setMods(list.sort(sortModules));
             } catch
             {
                 if (on) setMods([]);
@@ -70,6 +78,7 @@ export default function TopBar()
                 <View style={s.ddMenu}>
                     {mods.map((m) => (
                         <Pressable key={m.key} onPress={() => goTo(m)} style={s.ddItem}>
+                            <Text style={{ marginRight: 6 }}>{m.icon ?? "•"}</Text>
                             <Text>{m.name}</Text>
                         </Pressable>
                     ))}
@@ -109,8 +118,14 @@ const s = StyleSheet.create({
         borderColor: "#e5e7eb",
         borderRadius: 8,
         padding: 8,
-        gap: 4,
+        gap: 6,
         zIndex: 10,
     },
-    ddItem: { paddingVertical: 6, paddingHorizontal: 8, borderRadius: 6 },
+    ddItem: {
+        paddingVertical: 6,
+        paddingHorizontal: 8,
+        borderRadius: 6,
+        flexDirection: "row",
+        alignItems: "center",
+    },
 });

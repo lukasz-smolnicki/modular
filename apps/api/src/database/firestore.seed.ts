@@ -1,9 +1,8 @@
 import { Firestore } from "@google-cloud/firestore";
 
-export async function runSeed(db: Firestore) {
-  await db
-    .doc("health/firestore")
-    .set({ message: "Witamy z FIRESTORE" }, { merge: true });
+export async function runSeed(db: Firestore)
+{
+  await db.doc("health/firestore").set({ message: "Witamy z FIRESTORE" }, { merge: true });
 
   await db.doc("modules/users").set(
     {
@@ -11,68 +10,78 @@ export async function runSeed(db: Firestore) {
       name: "Użytkownicy",
       route: "/users",
       public: true,
+      icon: "👤",
+      description: "Profil i ustawienia użytkownika",
+      order: 0,
     },
     { merge: true },
   );
 
-  await db.doc("modules/admin").set(
-    {
-      key: "admin",
-      name: "Administracja",
-      route: "/admin",
-      public: true,
-    },
-    { merge: true },
-  );
-  await db
-    .doc("modules/offers")
-    .set(
-      { key: "offers", name: "Oferty", route: "/offers", public: true },
-      { merge: true },
-    );
   await db.doc("modules/clients").set(
     {
       key: "clients",
       name: "Klienci",
       route: "/clients",
       public: true,
-    },
-    { merge: true },
-  );
-  await db
-    .doc("modules/tasks")
-    .set(
-      { key: "tasks", name: "Zadania", route: "/tasks", public: true },
-      { merge: true },
-    );
-  await db
-    .doc("modules/notes")
-    .set(
-      { key: "notes", name: "Notatki", route: "/notes", public: true },
-      { merge: true },
-    );
-
-  await db.doc("users/demo-user-1").set(
-    {
-      id: "demo-user-1",
-      enabled: {
-        admin: "admin",
-        offers: "write",
-        clients: "read",
-        tasks: "read",
-        notes: "write",
-      },
+      icon: "👥",
+      description: "Lista i profil klientów",
+      order: 1,
     },
     { merge: true },
   );
 
-  await db.doc("users/demo-user-2").set(
+  await db.doc("modules/offers").set(
     {
-      id: "demo-user-2",
-      enabled: {
-        offers: "read",
-        clients: "write",
-      },
+      key: "offers",
+      name: "Oferty",
+      route: "/offers",
+      public: true,
+      icon: "💼",
+      description: "Oferty handlowe",
+      order: 2,
+    },
+    { merge: true },
+  );
+
+  await db.doc("modules/tasks").set(
+    {
+      key: "tasks",
+      name: "Zadania",
+      route: "/tasks",
+      public: true,
+      icon: "✅",
+      description: "Zadania i aktywności",
+      order: 3,
+    },
+    { merge: true },
+  );
+
+  await db.doc("modules/notes").set(
+    {
+      key: "notes",
+      name: "Notatki",
+      route: "/notes",
+      public: true,
+      icon: "📝",
+      description: "Notatki i komentarze",
+      order: 4,
+    },
+    { merge: true },
+  );
+
+  await db.doc("users/admin-1").set(
+    {
+      id: "admin-1",
+      roles: ["admin"],
+      enabledModules: ["users", "clients", "offers", "tasks", "notes"],
+    },
+    { merge: true },
+  );
+
+  await db.doc("users/user-1").set(
+    {
+      id: "user-1",
+      enabledModules: ["users", "clients", "offers"],
     },
     { merge: true },
   );
