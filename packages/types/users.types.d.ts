@@ -7,4 +7,5 @@ export type UserDoc = {
     enabledModules?: ModuleKey[];
     enabled?: EnabledModulesMap;
     id?: UserId;
+    roles?: string[];
 };
