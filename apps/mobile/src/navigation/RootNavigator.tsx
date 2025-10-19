@@ -28,8 +28,7 @@ const linking: LinkingOptions<RootStackParamList> = {
   },
 };
 
-export default function RootNavigator()
-{
+export default function RootNavigator() {
   return (
     <NavigationContainer linking={linking}>
       <Stack.Navigator
