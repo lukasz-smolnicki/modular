@@ -1,8 +1,9 @@
 import { Firestore } from "@google-cloud/firestore";
 
-export async function runSeed(db: Firestore)
-{
-  await db.doc("health/firestore").set({ message: "Witamy z FIRESTORE" }, { merge: true });
+export async function runSeed(db: Firestore) {
+  await db
+    .doc("health/firestore")
+    .set({ message: "Witamy z FIRESTORE" }, { merge: true });
 
   await db.doc("modules/user").set(
     {
@@ -12,9 +13,9 @@ export async function runSeed(db: Firestore)
       public: true,
       icon: "👤",
       description: "Profil i ustawienia użytkownika",
-      order: 0
+      order: 0,
     },
-    { merge: true }
+    { merge: true },
   );
 
   await db.doc("modules/clients").set(
@@ -25,9 +26,9 @@ export async function runSeed(db: Firestore)
       public: true,
       icon: "👥",
       description: "Lista i profil klientów",
-      order: 1
+      order: 1,
     },
-    { merge: true }
+    { merge: true },
   );
 
   await db.doc("modules/offers").set(
@@ -38,9 +39,9 @@ export async function runSeed(db: Firestore)
       public: true,
       icon: "💼",
       description: "Oferty handlowe",
-      order: 2
+      order: 2,
     },
-    { merge: true }
+    { merge: true },
   );
 
   await db.doc("modules/tasks").set(
@@ -51,9 +52,9 @@ export async function runSeed(db: Firestore)
       public: true,
       icon: "✅",
       description: "Zadania i aktywności",
-      order: 3
+      order: 3,
     },
-    { merge: true }
+    { merge: true },
   );
 
   await db.doc("modules/notes").set(
@@ -64,9 +65,9 @@ export async function runSeed(db: Firestore)
       public: true,
       icon: "📝",
       description: "Notatki i komentarze",
-      order: 4
+      order: 4,
     },
-    { merge: true }
+    { merge: true },
   );
 
   await db.doc("users/admin-1").set(
@@ -79,10 +80,10 @@ export async function runSeed(db: Firestore)
         clients: "admin",
         offers: "admin",
         tasks: "admin",
-        notes: "admin"
-      }
+        notes: "admin",
+      },
     },
-    { merge: true }
+    { merge: true },
   );
 
   await db.doc("users/user-1").set(
@@ -92,9 +93,9 @@ export async function runSeed(db: Firestore)
       enabled: {
         user: "read",
         clients: "write",
-        offers: "read"
-      }
+        offers: "read",
+      },
     },
-    { merge: true }
+    { merge: true },
   );
 }

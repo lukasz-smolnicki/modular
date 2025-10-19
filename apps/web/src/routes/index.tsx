@@ -12,7 +12,7 @@ export const routes: RouteObject[] = [
       { index: true, element: <Navigate to="/user" replace /> },
       { path: "user", element: <UserPage /> },
       ...healthRoutes,
-      { path: "*", element: <div /> }
-    ]
-  }
+      { path: "*", element: <div /> },
+    ],
+  },
 ];

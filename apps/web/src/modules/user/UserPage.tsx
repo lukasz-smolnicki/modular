@@ -1,12 +1,10 @@
 import LoginPage from "@/modules/auth/LoginPage";
 import { useAuthStatus } from "@/hooks/useAuthStatus";
 
-export default function UserPage()
-{
+export default function UserPage() {
   const { user, loading } = useAuthStatus();
 
-  if (loading)
-  {
+  if (loading) {
     return (
       <div style={{ padding: 24, fontFamily: "ui-sans-serif, system-ui" }}>
         Ładowanie…
@@ -14,8 +12,7 @@ export default function UserPage()
     );
   }
 
-  if (!user)
-  {
+  if (!user) {
     return <LoginPage />;
   }
 
